@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Impersio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            },
+            colors: {
+              background: 'var(--background)', 
+              surface: 'var(--surface)',    
+              'surface-hover': 'var(--surface-hover)',
+              border: 'var(--border)',     
+              primary: 'var(--primary)',    
+              muted: 'var(--muted)',      
+              'bubble-user': 'var(--bubble-user)',
+              'voice-peach': '#FFD7AE',
+              'voice-text': '#3f2510',
+              'deep-badge-bg': '#3f2510',
+              'deep-badge-text': '#ea7832',
+              'scira-accent': '#20b8cd',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      :root {
+        /* Light Mode */
+        --background: #ffffff;                 
+        --surface: #f4f4f5;                    
+        --surface-hover: #e4e4e7;
+        --border: #e4e4e7; 
+        --primary: #18181b;      
+        --muted: #71717a;  
+        --bubble-user: #f4f4f5;                 
+      }
+      
+      .dark {
+        /* Deep Dark Mode (Scira Style) */
+        --background: #09090b; /* Almost black */
+        --surface: #18181b;    /* Dark gray input/cards */
+        --surface-hover: #27272a; 
+        --border: #27272a;     
+        --primary: #fafafa;    
+        --muted: #a1a1aa;      
+        --bubble-user: #27272a; 
+      }
+
+      body {
+        background-color: var(--background);
+        color: var(--primary);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+      }
+
+      textarea::-webkit-scrollbar {
+        display: none;
+      }
+      textarea {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      
+      .markdown-body {
+        line-height: 1.7;
+        font-size: 0.95rem;
+        color: var(--primary);
+      }
+      .markdown-body p { margin-bottom: 1rem; }
+      .markdown-body ul, .markdown-body ol { margin-bottom: 1rem; padding-left: 1.5rem; }
+      .markdown-body li { margin-bottom: 0.5rem; }
+      .markdown-body h1, .markdown-body h2, .markdown-body h3 { 
+        font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.75rem; 
+      }
+      .markdown-body a { color: #20b8cd; text-decoration: none; }
+      .markdown-body a:hover { text-decoration: underline; }
+      .markdown-body code {
+        background-color: var(--surface-hover);
+        padding: 0.2em 0.4em;
+        border-radius: 4px;
+        font-size: 0.9em;
+      }
+      
+      /* Smooth fade in */
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in {
+        animation: fadeIn 0.4s ease-out forwards;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react-markdown": "https://esm.sh/react-markdown@9?bundle"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

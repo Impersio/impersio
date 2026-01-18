@@ -1,0 +1,378 @@
+import { GoogleGenAI } from "@google/genai";
+import { SearchResult, WidgetData } from "../types";
+
+// Lazily initialize to avoid top-level failures if API_KEY is missing
+const getAiClient = () => new GoogleGenAI({ apiKey: process.env.API_KEY || "dummy_key" });
+
+const OPENROUTER_API_KEY = "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";
+const GROQ_API_KEY = "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";
+
+export const streamResponse = async (
+  prompt: string, 
+  modelName: string, 
+  searchResults: SearchResult[],
+  attachments: string[],
+  onChunk: (content: string) => void,
+  onWidget: (widget: WidgetData) => void,
+  onRelated: (questions: string[]) => void
+): Promise<void> => {
+  try {
+    const now = new Date();
+    const currentDate = now.toLocaleString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric', 
+      hour: '2-digit', 
+      minute: '2-digit',
+      timeZoneName: 'short'
+    });
+
+    let systemInstruction = "";
+
+    // Optimization: Shorter system prompt for lower latency
+    if (searchResults.length > 0) {
+      // RAG MODE
+      const contextString = searchResults.map((result, index) => 
+        `[${index + 1}] ${result.title} (${result.link}): ${result.snippet}`
+      ).join("\n\n");
+
+      systemInstruction = `You are Impersio. Current Time: ${currentDate}
+      
+      OBJECTIVE: Provide a medium-length, well-structured, and accurate answer.
+      
+      RULES:
+      1. Cite sources inline like [1].
+      2. Use bullet points and markdown formatting to structure your response.
+      3. Be direct but provide sufficient detail (medium level).
+      4. WIDGETS: Use these formats at the START of your response if the user asks for:
+         - Time: ///TIME: HH:MM AM/PM | Weekday, Month DD, YYYY | Location | (Offset)///
+         - Weather: ///WEATHER: Location/// (e.g., ///WEATHER: Paris, France///)
+         - Stock/Crypto Price/Chart: ///STOCK: Symbol/// (e.g., ///STOCK: AAPL/// or ///STOCK: BTC-USD///). Use standard tickers.
+      5. RELATED QUESTIONS: At the very end of your response, strictly generate 3 related follow-up questions in this format: ///RELATED: ["Question 1", "Question 2", "Question 3"]///
+      
+      CONTEXT:
+      ${contextString}`;
+    } else {
+      // CONVERSATIONAL MODE
+      systemInstruction = `You are Impersio. Current Time: ${currentDate}
+      
+      RULES:
+      1. Answer directly and concisely (medium level).
+      2. Use bullet points for lists and structured information.
+      3. WIDGETS: Use these formats at the START of your response if the user explicitly asks for:
+         - Time: ///TIME: HH:MM AM/PM | Weekday, Month DD, YYYY | Location | (Offset)///
+         - Weather: ///WEATHER: Location///
+         - Stock/Crypto Price/Chart: ///STOCK: Symbol///
+      4. RELATED QUESTIONS: At the very end of your response, strictly generate 3 related follow-up questions in this format: ///RELATED: ["Question 1", "Question 2", "Question 3"]///`;
+    }
+
+    let fullStreamText = "";
+    let widgetParsed = false;
+    let relatedParsed = false;
+
+    const processChunk = (text: string) => {
+      fullStreamText += text;
+      
+      // 1. Handle Widgets (Start of stream)
+      if (!widgetParsed && fullStreamText.startsWith("///")) {
+        const endTagIndex = fullStreamText.indexOf("///", 3);
+        
+        if (endTagIndex !== -1) {
+          const rawTag = fullStreamText.substring(3, endTagIndex);
+          const colonIndex = rawTag.indexOf(":");
+          
+          if (colonIndex !== -1) {
+              const type = rawTag.substring(0, colonIndex).toUpperCase();
+              const content = rawTag.substring(colonIndex + 1).trim();
+
+              if (type === 'TIME') {
+                  const parts = content.split("|").map(s => s.trim());
+                  if (parts.length >= 3) {
+                     onWidget({
+                       type: 'time',
+                       data: {
+                         time: parts[0],
+                         date: parts[1],
+                         location: parts[2],
+                         timezone: parts[3] || ''
+                       }
+                     });
+                  }
+              } else if (type === 'WEATHER') {
+                  onWidget({
+                      type: 'weather',
+                      data: { location: content }
+                  });
+              } else if (type === 'STOCK') {
+                  onWidget({
+                      type: 'stock',
+                      data: { symbol: content }
+                  });
+              }
+              widgetParsed = true;
+          }
+        }
+      }
+
+      // 2. Handle Related Questions (End of stream)
+      // Check if related tag exists in the buffer
+      const relatedStartIndex = fullStreamText.indexOf("///RELATED:");
+      if (!relatedParsed && relatedStartIndex !== -1) {
+          const relatedEndIndex = fullStreamText.indexOf("///", relatedStartIndex + 11); // 11 is length of "///RELATED:"
+          
+          if (relatedEndIndex !== -1) {
+              const jsonStr = fullStreamText.substring(relatedStartIndex + 11, relatedEndIndex).trim();
+              try {
+                  const questions = JSON.parse(jsonStr);
+                  if (Array.isArray(questions)) {
+                      onRelated(questions);
+                      relatedParsed = true;
+                  }
+              } catch (e) {
+                  console.error("Failed to parse related questions", e);
+              }
+          }
+      }
+
+      // 3. Determine what to send to onChunk
+      let contentToProcess = fullStreamText;
+      
+      // Strip widget tag if parsed
+      if (widgetParsed) {
+        const endTagIndex = fullStreamText.indexOf("///", 3);
+        if (endTagIndex !== -1) {
+            contentToProcess = fullStreamText.substring(endTagIndex + 3).trimStart();
+        }
+      } else if (fullStreamText.startsWith("///")) {
+         // Still buffering widget
+         if (fullStreamText.length < 200) return;
+      }
+
+      // Strip related tag if present (parsed or not, we don't want to show it)
+      const currentRelatedIndex = contentToProcess.indexOf("///RELATED:");
+      if (currentRelatedIndex !== -1) {
+          contentToProcess = contentToProcess.substring(0, currentRelatedIndex).trimEnd();
+      }
+
+      onChunk(contentToProcess);
+    };
+
+    const isGroqModel = [
+        'openai/gpt-oss-120b', 
+        'moonshotai/kimi-k2-instruct-0905', 
+        'meta-llama/llama-4-maverick-17b-128e-instruct', 
+        'qwen/qwen3-32b'
+    ].includes(modelName);
+
+    // Prepare content object for OpenAI-compatible APIs (Groq/OpenRouter)
+    let messagesPayload: any[] = [
+        { role: "system", content: systemInstruction }
+    ];
+
+    if (attachments.length > 0) {
+        const userContent: any[] = [{ type: "text", text: prompt }];
+        attachments.forEach(img => {
+            userContent.push({
+                type: "image_url",
+                image_url: { url: img }
+            });
+        });
+        messagesPayload.push({ role: "user", content: userContent });
+    } else {
+        messagesPayload.push({ role: "user", content: prompt });
+    }
+
+    if (isGroqModel) {
+        // Groq API Logic
+        let maxTokens = 4096;
+        let temperature = 0.6;
+        let reasoningEffort = undefined;
+        let topP = 0.95;
+
+        if (modelName === 'openai/gpt-oss-120b') {
+            maxTokens = 8192;
+            temperature = 1;
+            topP = 1;
+            reasoningEffort = "medium";
+        } else if (modelName === 'meta-llama/llama-4-maverick-17b-128e-instruct') {
+            maxTokens = 1024;
+            temperature = 1;
+            topP = 1;
+        } else if (modelName === 'moonshotai/kimi-k2-instruct-0905') {
+            maxTokens = 4096;
+            temperature = 0.6;
+            topP = 1;
+        } else if (modelName === 'qwen/qwen3-32b') {
+            maxTokens = 4096;
+            temperature = 0.6;
+            topP = 0.95;
+            reasoningEffort = "default";
+        }
+
+        try {
+          const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+             method: "POST",
+             headers: {
+               "Authorization": `Bearer ${GROQ_API_KEY}`,
+               "Content-Type": "application/json",
+             },
+             body: JSON.stringify({
+               model: modelName,
+               messages: messagesPayload,
+               stream: true,
+               temperature,
+               max_completion_tokens: maxTokens,
+               top_p: topP,
+               reasoning_effort: reasoningEffort 
+             })
+          });
+
+          if (!response.ok) {
+             const errText = await response.text().catch(() => "Unknown error");
+             throw new Error(`Groq API Error: ${response.status} - ${errText}`);
+          }
+
+          if (!response.body) throw new Error("No response body from Groq");
+      
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+            
+            for (const line of lines) {
+              const trimmedLine = line.trim();
+              if (!trimmedLine) continue;
+              if (trimmedLine.startsWith('data: ')) {
+                const dataStr = trimmedLine.slice(6);
+                if (dataStr === '[DONE]') continue;
+                try {
+                  const data = JSON.parse(dataStr);
+                  const content = data.choices[0]?.delta?.content || "";
+                  if (content) processChunk(content);
+                } catch (e) {}
+              }
+            }
+          }
+        } catch (fetchError: any) {
+           throw new Error(`Groq Connection Failed: ${fetchError.message}`);
+        }
+
+    } else if (modelName === 'xiaomi/mimo-v2-flash:free') {
+      // OpenRouter Logic for Mimo
+      let response;
+      try {
+        response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://impersio.ai", 
+            "X-Title": "Impersio" 
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages: messagesPayload,
+            stream: true,
+            streamOptions: {
+              includeUsage: true
+            }
+          })
+        });
+      } catch (e: any) {
+        throw new Error(`OpenRouter Connection Failed: ${e.message}`);
+      }
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => "");
+        throw new Error(`OpenRouter Error ${response.status}: ${errText}`);
+      }
+
+      if (!response.body) throw new Error("No response body from OpenRouter");
+      
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          if (!trimmedLine) continue;
+          if (trimmedLine.startsWith('data: ')) {
+            const dataStr = trimmedLine.slice(6);
+            if (dataStr === '[DONE]') continue;
+            try {
+              const data = JSON.parse(dataStr);
+              const content = data.choices[0]?.delta?.content || "";
+              if (content) processChunk(content);
+            } catch (e) {}
+          }
+        }
+      }
+
+    } else {
+      // Gemini Logic
+      try {
+        const ai = getAiClient();
+        
+        let contentsPayload: any = prompt;
+        
+        if (attachments.length > 0) {
+            const parts: any[] = [{ text: prompt }];
+            attachments.forEach(img => {
+                const matches = img.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+                if (matches && matches.length === 3) {
+                    parts.push({ 
+                        inlineData: { 
+                            mimeType: matches[1], 
+                            data: matches[2] 
+                        } 
+                    });
+                }
+            });
+            contentsPayload = [{ role: 'user', parts }];
+        }
+
+        const result = await ai.models.generateContentStream({
+            model: modelName,
+            contents: contentsPayload,
+            config: {
+              systemInstruction: systemInstruction,
+              thinkingConfig: { thinkingBudget: 0 } 
+            }
+        });
+
+        for await (const chunk of result) {
+            const text = chunk.text || "";
+            processChunk(text);
+        }
+      } catch (error: any) {
+          if (error.status === 429 || error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
+              onChunk("⚠️ **Usage Limit Exceeded**\n\nThe AI model is currently unavailable due to high traffic (Quota Exceeded). Please try again in a minute or switch to a different model.");
+              return;
+          }
+          if (error.message?.includes("API key")) {
+              onChunk("⚠️ **API Key Error**\n\nThe Google Gemini API key is missing or invalid. Please check your configuration.");
+              return;
+          }
+          throw error;
+      }
+    }
+
+  } catch (error: any) {
+    console.error("AI Error:", error);
+    onChunk(`**Connection Error**: ${error.message || "Failed to fetch response"}. \n\nPlease check your internet connection or try a different model.`);
+  }
+};

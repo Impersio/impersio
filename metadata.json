@@ -1,0 +1,7 @@
+{
+  "name": "Scira Interface Clone",
+  "description": "A pixel-perfect clone of the Scira AI search engine interface.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
