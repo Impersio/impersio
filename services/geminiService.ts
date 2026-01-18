@@ -24,6 +24,7 @@ export const streamResponse = async (
   modelName: string, 
   searchResults: SearchResult[],
   attachments: string[],
+  isReasoningEnabled: boolean,
   onChunk: (content: string) => void,
   onWidget: (widget: WidgetData) => void,
   onRelated: (questions: string[]) => void
@@ -42,6 +43,18 @@ export const streamResponse = async (
 
     let systemInstruction = "";
 
+    const capabilitiesText = `
+    CAPABILITIES & FEATURES:
+      1. **Search Modes**: You can search the Web, X (Twitter), Reddit, Videos, and perform "Deep Research" or "Fact Checks".
+      2. **Widgets**: You can render interactive cards.
+         - Weather: For forecasts (Trigger: ///WEATHER: Location///).
+         - Stocks: For market data (Trigger: ///STOCK: Symbol///).
+         - Time: For world clocks (Trigger: ///TIME: ...///).
+      3. **Multi-Model**: You are powered by a swarm of models (Gemini, Llama, Qwen, etc.).
+      4. **Multimodal**: You can see and analyze user-uploaded images.
+      5. **Privacy-Focused**: You provide direct answers without tracking.
+    `;
+
     // Optimization: Shorter system prompt for lower latency
     if (searchResults.length > 0) {
       // RAG MODE
@@ -49,9 +62,10 @@ export const streamResponse = async (
         `[${index + 1}] ${result.title} (${result.link}): ${result.snippet}`
       ).join("\n\n");
 
-      systemInstruction = `You are Impersio. Current Time: ${currentDate}
+      systemInstruction = `You are Impersio, a minimalist AI search engine. Current Time: ${currentDate}
+      ${capabilitiesText}
       
-      OBJECTIVE: Provide a medium-length, well-structured, and accurate answer.
+      OBJECTIVE: Provide a medium-length, well-structured, and accurate answer based on the context.
       
       RULES:
       1. Cite sources inline like [1].
@@ -62,12 +76,14 @@ export const streamResponse = async (
          - Weather: ///WEATHER: Location/// (e.g., ///WEATHER: Paris, France///)
          - Stock/Crypto Price/Chart: ///STOCK: Symbol/// (e.g., ///STOCK: AAPL/// or ///STOCK: BTC-USD///). Use standard tickers.
       5. RELATED QUESTIONS: At the very end of your response, strictly generate 3 related follow-up questions in this format: ///RELATED: ["Question 1", "Question 2", "Question 3"]///
+      ${isReasoningEnabled ? '6. REASONING: The user has requested "Deep Reasoning". Think step-by-step, analyze conflicts in data, and provide a comprehensive, logic-driven answer.' : ''}
       
       CONTEXT:
       ${contextString}`;
     } else {
       // CONVERSATIONAL MODE
-      systemInstruction = `You are Impersio. Current Time: ${currentDate}
+      systemInstruction = `You are Impersio, a minimalist AI search engine. Current Time: ${currentDate}
+      ${capabilitiesText}
       
       RULES:
       1. Answer directly and concisely (medium level).
@@ -76,7 +92,8 @@ export const streamResponse = async (
          - Time: ///TIME: HH:MM AM/PM | Weekday, Month DD, YYYY | Location | (Offset)///
          - Weather: ///WEATHER: Location///
          - Stock/Crypto Price/Chart: ///STOCK: Symbol///
-      4. RELATED QUESTIONS: At the very end of your response, strictly generate 3 related follow-up questions in this format: ///RELATED: ["Question 1", "Question 2", "Question 3"]///`;
+      4. RELATED QUESTIONS: At the very end of your response, strictly generate 3 related follow-up questions in this format: ///RELATED: ["Question 1", "Question 2", "Question 3"]///
+      ${isReasoningEnabled ? '5. REASONING: The user has requested "Deep Reasoning". Think step-by-step and provide a comprehensive, logic-driven answer.' : ''}`;
     }
 
     let fullStreamText = "";
@@ -206,7 +223,7 @@ export const streamResponse = async (
             maxTokens = 8192;
             temperature = 1;
             topP = 1;
-            reasoningEffort = "medium";
+            reasoningEffort = isReasoningEnabled ? "high" : "medium"; // Use deep reasoning toggle
         } else if (modelName === 'meta-llama/llama-4-maverick-17b-128e-instruct') {
             maxTokens = 1024;
             temperature = 1;
@@ -362,7 +379,7 @@ export const streamResponse = async (
             contents: contentsPayload,
             config: {
               systemInstruction: systemInstruction,
-              thinkingConfig: { thinkingBudget: 0 } 
+              thinkingConfig: isReasoningEnabled ? { thinkingBudget: 1024 } : { thinkingBudget: 0 } 
             }
         });
 
