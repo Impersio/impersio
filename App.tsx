@@ -21,16 +21,22 @@ import {
   Menu,
   Check,
   Sparkles,
-  X
+  X,
+  UserCircle,
+  History
 } from 'lucide-react';
 import { streamResponse } from './services/geminiService';
 import { searchWeb } from './services/googleSearchService';
+import { createConversation, saveMessage, getConversationMessages } from './services/chatStorageService';
+import { supabase } from './services/supabaseClient';
 import { Message, SearchResult, WidgetData } from './types';
 import { Discover } from './components/Discover';
 import { TimeWidget } from './components/TimeWidget';
 import { StockWidget } from './components/StockWidget';
 import { WeatherWidget } from './components/WeatherWidget';
 import { SearchModes } from './components/SearchModes';
+import { AuthModal } from './components/AuthModal';
+import { HistorySidebar } from './components/HistorySidebar';
 import { 
   ReasoningIcon, 
   GeminiIcon, 
@@ -96,12 +102,31 @@ export default function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isMobile, setIsMobile] = useState(false);
+  
+  // Auth & Storage States
+  const [user, setUser] = useState<any>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Check Auth Session
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -157,9 +182,18 @@ export default function App() {
     const currentAttachments = [...attachments];
     setAttachments([]);
 
+    let currentConversationId = conversationId;
+
     if (!hasSearched) {
       setHasSearched(true);
-      setCurrentTitle(finalQuery.length > 30 ? finalQuery.substring(0, 30) + "..." : finalQuery || "Image Analysis");
+      const title = finalQuery.length > 30 ? finalQuery.substring(0, 30) + "..." : finalQuery || "Image Analysis";
+      setCurrentTitle(title);
+      // Create conversation in Supabase (pass user.id if logged in)
+      const newId = await createConversation(title, user?.id);
+      if (newId) {
+        setConversationId(newId);
+        currentConversationId = newId;
+      }
     }
     
     // Pass images in the message for user
@@ -168,6 +202,11 @@ export default function App() {
         content: finalQuery,
         images: currentAttachments // Store user images here for display
     }]);
+
+    // Save User Message to Supabase
+    if (currentConversationId) {
+        await saveMessage(currentConversationId, 'user', finalQuery, { images: currentAttachments });
+    }
 
     const modelId = getModelId(selectedModel.id);
     
@@ -229,13 +268,28 @@ export default function App() {
                 }
                 return newMessages;
             });
+        },
+        // onComplete callback to save to Supabase
+        async (fullContent, widget, relatedQuestions) => {
+            if (currentConversationId) {
+                await saveMessage(currentConversationId, 'assistant', fullContent, {
+                    sources: searchResults,
+                    images: searchImages,
+                    widget: widget,
+                    relatedQuestions: relatedQuestions
+                });
+            }
         }
       );
       
     } catch (e) {
       console.error("Search failed", e);
       setIsSearching(false);
-      setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I encountered an error while searching." }]);
+      const errorMessage = "Sorry, I encountered an error while searching.";
+      setMessages(prev => [...prev, { role: 'assistant', content: errorMessage }]);
+      if (currentConversationId) {
+          await saveMessage(currentConversationId, 'assistant', errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -307,6 +361,27 @@ export default function App() {
 
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const loadConversation = async (id: string, title: string) => {
+     setIsLoading(true);
+     setMessages([]);
+     setHasSearched(true);
+     setCurrentTitle(title);
+     setConversationId(id);
+     
+     const history = await getConversationMessages(id);
+     setMessages(history);
+     setIsLoading(false);
+  };
+
+  const handleNewChat = () => {
+     setHasSearched(false);
+     setMessages([]);
+     setConversationId(null);
+     setCurrentTitle("New Search");
+     setQuery('');
+     setAttachments([]);
   };
 
   const renderInputBar = (isInitial: boolean) => (
@@ -454,17 +529,62 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background text-primary flex flex-col font-sans relative transition-colors duration-300">
-      
-      {/* Theme Toggle & Links (only on Home) */}
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <HistorySidebar 
+        isOpen={isHistoryOpen} 
+        onClose={() => setIsHistoryOpen(false)} 
+        onSelectChat={loadConversation}
+        onNewChat={handleNewChat}
+        userId={user?.id}
+        onSignIn={() => setIsAuthModalOpen(true)}
+      />
+
+      {/* Top Bar for Home View (User/Menu) */}
       {!hasSearched && view === 'home' && (
-        <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
-           {/* Theme Toggle */}
-           <button
-            onClick={toggleTheme}
-            className="p-2 rounded-full text-muted hover:text-primary transition-all duration-200 hover:bg-surface hover:scale-105"
-           >
-            {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-           </button>
+        <div className="absolute top-6 left-6 right-6 z-20 flex items-center justify-between pointer-events-none">
+            {/* Left: History/Menu (Only if logged in or allow guest to see empty) */}
+            <div className="pointer-events-auto">
+               <button 
+                 onClick={() => setIsHistoryOpen(true)}
+                 className="p-2 rounded-full text-muted hover:text-primary transition-all duration-200 hover:bg-surface"
+               >
+                 <Menu className="w-5 h-5" />
+               </button>
+            </div>
+
+            {/* Right: Theme & Auth */}
+            <div className="pointer-events-auto flex items-center gap-3">
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-full text-muted hover:text-primary transition-all duration-200 hover:bg-surface hover:scale-105"
+              >
+                {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+              </button>
+              
+              {user ? (
+                 <button 
+                   onClick={() => setIsHistoryOpen(true)} 
+                   className="w-9 h-9 rounded-full bg-scira-accent/20 text-scira-accent flex items-center justify-center font-medium text-sm border border-scira-accent/30 hover:bg-scira-accent/30 transition-all"
+                 >
+                    {user.email?.[0].toUpperCase()}
+                 </button>
+              ) : (
+                 <div className="flex items-center gap-2">
+                   <button 
+                     onClick={() => setIsAuthModalOpen(true)}
+                     className="px-4 py-2 text-sm font-medium text-muted hover:text-primary transition-colors"
+                   >
+                     Log In
+                   </button>
+                   <button 
+                     onClick={() => setIsAuthModalOpen(true)}
+                     className="px-4 py-2 bg-primary text-background rounded-full text-sm font-medium hover:opacity-90 transition-all shadow-sm"
+                   >
+                     Sign Up
+                   </button>
+                 </div>
+              )}
+            </div>
         </div>
       )}
 
@@ -487,15 +607,37 @@ export default function App() {
           <header className="flex-none h-14 flex items-center px-4 bg-background sticky top-0 z-10 justify-between border-b border-border/40 backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
             <div className="flex items-center gap-4">
                <button 
+                   onClick={() => setIsHistoryOpen(true)}
+                   className="p-1.5 -ml-2 text-muted hover:text-primary rounded-lg hover:bg-surface transition-colors"
+               >
+                  <Menu className="w-5 h-5" />
+               </button>
+               <button 
                   className="cursor-pointer hover:opacity-80 transition-all duration-200 hover:scale-[1.02]"
-                  onClick={() => {
-                    setHasSearched(false);
-                    setMessages([]);
-                    setCurrentTitle("New Search");
-                  }}
+                  onClick={handleNewChat}
                >
                   <ImpersioLogo compact />
                </button>
+            </div>
+            
+            {/* Header Right Actions */}
+            <div className="flex items-center gap-2">
+                 {!user && (
+                    <button 
+                       onClick={() => setIsAuthModalOpen(true)}
+                       className="text-xs font-medium px-3 py-1.5 bg-primary text-background rounded-full hover:opacity-90 transition-all shadow-sm"
+                    >
+                       Sign In
+                    </button>
+                 )}
+                 {user && (
+                    <button 
+                      onClick={() => setIsHistoryOpen(true)} 
+                      className="w-8 h-8 rounded-full bg-scira-accent/20 text-scira-accent flex items-center justify-center font-medium text-xs border border-scira-accent/30"
+                    >
+                        {user.email?.[0].toUpperCase()}
+                    </button>
+                 )}
             </div>
           </header>
 

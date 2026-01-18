@@ -28,7 +28,8 @@ export const streamResponse = async (
   isMobile: boolean,
   onChunk: (content: string) => void,
   onWidget: (widget: WidgetData) => void,
-  onRelated: (questions: string[]) => void
+  onRelated: (questions: string[]) => void,
+  onComplete?: (fullContent: string, widget: WidgetData | undefined, relatedQuestions: string[]) => void
 ): Promise<void> => {
   try {
     const now = new Date();
@@ -101,6 +102,10 @@ export const streamResponse = async (
     let fullStreamText = "";
     let widgetParsed = false;
     let relatedParsed = false;
+    
+    // Captured data for completion callback
+    let capturedWidget: WidgetData | undefined = undefined;
+    let capturedRelatedQuestions: string[] = [];
 
     const processChunk = (text: string) => {
       fullStreamText += text;
@@ -120,7 +125,7 @@ export const streamResponse = async (
               if (type === 'TIME') {
                   const parts = content.split("|").map(s => s.trim());
                   if (parts.length >= 3) {
-                     onWidget({
+                     const wData: WidgetData = {
                        type: 'time',
                        data: {
                          time: parts[0],
@@ -128,18 +133,24 @@ export const streamResponse = async (
                          location: parts[2],
                          timezone: parts[3] || ''
                        }
-                     });
+                     };
+                     capturedWidget = wData;
+                     onWidget(wData);
                   }
               } else if (type === 'WEATHER') {
-                  onWidget({
+                  const wData: WidgetData = {
                       type: 'weather',
                       data: { location: content }
-                  });
+                  };
+                  capturedWidget = wData;
+                  onWidget(wData);
               } else if (type === 'STOCK') {
-                  onWidget({
+                  const wData: WidgetData = {
                       type: 'stock',
                       data: { symbol: content }
-                  });
+                  };
+                  capturedWidget = wData;
+                  onWidget(wData);
               }
               widgetParsed = true;
           }
@@ -157,6 +168,7 @@ export const streamResponse = async (
               try {
                   const questions = JSON.parse(jsonStr);
                   if (Array.isArray(questions)) {
+                      capturedRelatedQuestions = questions;
                       onRelated(questions);
                       relatedParsed = true;
                   }
@@ -187,6 +199,30 @@ export const streamResponse = async (
       }
 
       onChunk(contentToProcess);
+    };
+    
+    // Function to handle stream completion
+    const finishStream = () => {
+        if (onComplete) {
+            // Clean up the full text for storage similar to how we display it
+            let finalText = fullStreamText;
+            
+            // Remove widget tag
+            if (finalText.startsWith("///")) {
+                const endTagIndex = finalText.indexOf("///", 3);
+                if (endTagIndex !== -1) {
+                    finalText = finalText.substring(endTagIndex + 3).trimStart();
+                }
+            }
+            
+            // Remove related tag
+            const relIndex = finalText.indexOf("///RELATED:");
+            if (relIndex !== -1) {
+                finalText = finalText.substring(0, relIndex).trimEnd();
+            }
+            
+            onComplete(finalText, capturedWidget, capturedRelatedQuestions);
+        }
     };
 
     const isGroqModel = [
@@ -291,6 +327,7 @@ export const streamResponse = async (
               }
             }
           }
+          finishStream();
         } catch (fetchError: any) {
            throw new Error(`Groq Connection Failed: ${fetchError.message}`);
         }
@@ -352,6 +389,7 @@ export const streamResponse = async (
           }
         }
       }
+      finishStream();
 
     } else {
       // Gemini Logic
@@ -389,6 +427,7 @@ export const streamResponse = async (
             const text = chunk.text || "";
             processChunk(text);
         }
+        finishStream();
       } catch (error: any) {
           if (error.status === 429 || error.message?.includes("429") || error.message?.includes("RESOURCE_EXHAUSTED")) {
               onChunk("⚠️ **Usage Limit Exceeded**\n\nThe AI model is currently unavailable due to high traffic (Quota Exceeded). Please try again in a minute or switch to a different model.");
