@@ -60,17 +60,20 @@ const SEARCH_MODES = [
 // Updated Regex to include feature/capability questions so they don't trigger a web search
 const SKIP_SEARCH_REGEX = /^(hi|hello|hey|greetings|sup|howdy|yo|good\s*(morning|afternoon|evening|night)|how\s*are\s*you|who\s*are\s*you|what\s*is\s*your\s*name|help|test|what\s*can\s*you\s*do|what\s*are\s*your\s*features|capabilities|features)$/i;
 
-const ImpersioLogo = ({ isMobile }: { isMobile: boolean }) => (
-  <div className="flex items-center gap-3 select-none transition-transform duration-300 hover:scale-105 cursor-default">
+const ImpersioLogo = ({ isMobile, compact = false }: { isMobile?: boolean; compact?: boolean }) => (
+  <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'} select-none transition-transform duration-300 hover:scale-105 cursor-default`}>
     {/* Impersio Logo Icon */}
-    <div className={`${isMobile ? 'w-8 h-8' : 'w-10 h-10'} relative flex items-center justify-center text-primary`}>
-       <svg viewBox="0 0 52 40" fill="none" stroke="currentColor" strokeWidth="4" className="w-full h-full">
-          <rect x="2" y="2" width="20" height="36" rx="10" />
-          <rect x="18" y="2" width="20" height="36" rx="10" />
-          <circle cx="12" cy="11" r="2.5" fill="currentColor" stroke="none" />
+    <div className={`${compact ? 'w-6 h-6' : (isMobile ? 'w-10 h-10' : 'w-12 h-12')} relative flex items-center justify-center text-primary`}>
+       <svg viewBox="0 0 50 40" fill="none" stroke="currentColor" strokeWidth="4" className="w-full h-full">
+          {/* Left Pill */}
+          <rect x="4" y="2" width="20" height="36" rx="10" />
+          {/* Right Pill - Overlapping */}
+          <rect x="20" y="2" width="20" height="36" rx="10" />
+          {/* Dot in the left pill */}
+          <circle cx="14" cy="11" r="3" fill="currentColor" stroke="none" />
        </svg>
     </div>
-    <span className={`font-sans font-medium tracking-tight text-primary ${isMobile ? 'text-3xl' : 'text-4xl'}`}>
+    <span className={`font-sans font-medium tracking-tight text-primary ${compact ? 'text-lg' : (isMobile ? 'text-4xl' : 'text-5xl')}`}>
       Impersio
     </span>
   </div>
@@ -481,7 +484,7 @@ export default function App() {
         </main>
       ) : (
         <div className="flex flex-col h-screen">
-          <header className="flex-none h-14 flex items-center px-4 bg-background sticky top-0 z-10 justify-between">
+          <header className="flex-none h-14 flex items-center px-4 bg-background sticky top-0 z-10 justify-between border-b border-border/40 backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
             <div className="flex items-center gap-4">
                <button 
                   className="cursor-pointer hover:opacity-80 transition-all duration-200 hover:scale-[1.02]"
@@ -491,7 +494,7 @@ export default function App() {
                     setCurrentTitle("New Search");
                   }}
                >
-                  <span className="font-sans font-semibold text-xl tracking-tight text-primary">Impersio</span>
+                  <ImpersioLogo compact />
                </button>
             </div>
           </header>
