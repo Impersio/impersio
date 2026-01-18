@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { X, Mail, Lock, Loader2, CheckCircle } from 'lucide-react';
-import { GithubIcon } from './Icons';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -26,6 +25,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+  // Helper to determine the correct redirect URL for Email Confirmation
+  const getRedirectUrl = () => {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:3000';
+    }
+    return 'https://impersio.me';
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -44,8 +51,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           email,
           password,
           options: {
-            // Redirect back to the current URL after email confirmation
-            emailRedirectTo: window.location.origin, 
+            emailRedirectTo: getRedirectUrl(), 
           }
         });
         if (error) throw error;
@@ -61,21 +67,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       setError(err.message || "Authentication failed");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleGithubLogin = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'github',
-        options: {
-          redirectTo: window.location.origin,
-        }
-      });
-      if (error) throw error;
-      // Redirect will happen automatically
-    } catch (err: any) {
-      setError(err.message || "GitHub login failed");
     }
   };
 
@@ -118,23 +109,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
             </p>
 
             <div className="space-y-4">
-              <button 
-                onClick={handleGithubLogin}
-                className="w-full bg-[#24292e] hover:bg-[#24292e]/90 text-white font-medium py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
-              >
-                <GithubIcon className="w-5 h-5" />
-                Continue with GitHub
-              </button>
-
-              <div className="relative flex items-center justify-center">
-                 <div className="absolute inset-0 flex items-center">
-                   <div className="w-full border-t border-border"></div>
-                 </div>
-                 <span className="relative bg-surface px-4 text-xs text-muted font-medium uppercase tracking-wider">
-                   Or continue with email
-                 </span>
-              </div>
-
               <form onSubmit={handleAuth} className="space-y-4">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted ml-1">Email</label>
