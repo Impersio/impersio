@@ -120,10 +120,20 @@ export default function App() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        // Clean URL hash if we just logged in via OAuth
+        if (window.location.hash && window.location.hash.includes('access_token')) {
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      // Double check hash clearing on auth state change
+      if (session?.user && window.location.hash.includes('access_token')) {
+         window.history.replaceState(null, '', window.location.pathname);
+      }
     });
 
     return () => subscription.unsubscribe();
