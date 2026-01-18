@@ -42,6 +42,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            // Redirect back to the current URL after email confirmation
+            emailRedirectTo: window.location.origin, 
+          }
         });
         if (error) throw error;
         
