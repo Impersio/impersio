@@ -31,6 +31,7 @@ import { createConversation, saveMessage, getConversationMessages } from './serv
 import { supabase } from './services/supabaseClient';
 import { Message, SearchResult, WidgetData } from './types';
 import { Discover } from './components/Discover';
+import { About } from './components/About';
 import { TimeWidget } from './components/TimeWidget';
 import { StockWidget } from './components/StockWidget';
 import { WeatherWidget } from './components/WeatherWidget';
@@ -66,7 +67,7 @@ const SEARCH_MODES = [
 // Updated Regex to include feature/capability questions so they don't trigger a web search
 const SKIP_SEARCH_REGEX = /^(hi|hello|hey|greetings|sup|howdy|yo|good\s*(morning|afternoon|evening|night)|how\s*are\s*you|who\s*are\s*you|what\s*is\s*your\s*name|help|test|what\s*can\s*you\s*do|what\s*are\s*your\s*features|capabilities|features)$/i;
 
-const ImpersioLogo = ({ isMobile, compact = false }: { isMobile?: boolean; compact?: boolean }) => (
+export const ImpersioLogo = ({ isMobile, compact = false }: { isMobile?: boolean; compact?: boolean }) => (
   <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'} select-none transition-transform duration-300 hover:scale-105 cursor-default`}>
     {/* Impersio Logo Icon */}
     <div className={`${compact ? 'w-6 h-6' : (isMobile ? 'w-10 h-10' : 'w-12 h-12')} relative flex items-center justify-center text-primary`}>
@@ -98,7 +99,7 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [currentTitle, setCurrentTitle] = useState("New Search");
-  const [view, setView] = useState<'home' | 'discover'>('home');
+  const [view, setView] = useState<'home' | 'discover' | 'about'>('home');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isMobile, setIsMobile] = useState(false);
@@ -537,6 +538,10 @@ export default function App() {
     return <Discover onBack={() => setView('home')} />;
   }
 
+  if (view === 'about') {
+    return <About onBack={() => setView('home')} />;
+  }
+
   return (
     <div className="min-h-screen bg-background text-primary flex flex-col font-sans relative transition-colors duration-300">
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
@@ -547,6 +552,7 @@ export default function App() {
         onNewChat={handleNewChat}
         userId={user?.id}
         onSignIn={() => setIsAuthModalOpen(true)}
+        onOpenAbout={() => setView('about')}
       />
 
       {/* Top Bar for Home View (User/Menu) */}
