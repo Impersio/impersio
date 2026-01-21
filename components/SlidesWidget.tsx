@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Download, Maximize2, X, Image as ImageIcon, Upload } from 'lucide-react';
 import { SlidesWidgetData } from '../types';
@@ -47,7 +48,7 @@ export const SlidesWidget: React.FC<SlidesWidgetProps> = ({ data }) => {
     const BG_COLOR = 'FFFFFF';
     const TEXT_COLOR = '333333';
     const TITLE_COLOR = '111111';
-    const ACCENT_COLOR = '20b8cd'; // Keep brand accent
+    const ACCENT_COLOR = '1c7483'; // Updated to new brand accent
 
     // Helper to get image data (Base64 is safest for browser generation)
     const getImageDataForSlide = async (idx: number, url?: string) => {
@@ -74,7 +75,7 @@ export const SlidesWidget: React.FC<SlidesWidgetProps> = ({ data }) => {
     slide.background = { color: BG_COLOR }; 
     
     // Decorative Bar
-    slide.addShape(pres.ShapeType.rect, { x: 0, y: 0, w: '100%', h: 0.15, fill: ACCENT_COLOR });
+    slide.addShape(pres.ShapeType.rect, { x: 0, y: 0, w: '100%', h: 0.15, fill: { color: ACCENT_COLOR } });
 
     slide.addText(data.title, { 
         x: 0.5, y: 2.5, w: '90%', h: 1.5, 
@@ -122,7 +123,7 @@ export const SlidesWidget: React.FC<SlidesWidgetProps> = ({ data }) => {
                 fontSize: 18, 
                 color: TEXT_COLOR, 
                 breakLine: true, 
-                bullet: { type: 'bullet', code: '2022' }, 
+                bullet: { type: 'bullet' as const, characterCode: '2022' }, 
                 paraSpaceBefore: 12,
                 lineSpacing: 28
             } 
@@ -241,7 +242,7 @@ export const SlidesWidget: React.FC<SlidesWidgetProps> = ({ data }) => {
                                     />
                                     <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                                         {currentSlide.chart.data.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#20b8cd' : '#3f2510'} />
+                                            <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#1c7483' : '#3f2510'} />
                                         ))}
                                     </Bar>
                                 </BarChart>

@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 import { SearchResult, WidgetData } from "../types";
 
@@ -128,7 +129,7 @@ export const streamResponse = async (
     ### Market Impact
     [Concise paragraph ~3 lines]
 
-    5. **Citations**: Use inline [Source Title](Source Link) citations if links are available, or [1] if not.
+    5. **NO INLINE CITATIONS**: Do NOT use inline citations (e.g., [1], [Source]). Do NOT reference source numbers in the text. Provide the information cleanly.
     `;
 
     // System prompt construction
@@ -146,7 +147,7 @@ export const streamResponse = async (
       ${formattingRules}
 
       RULES:
-      1. Cite sources inline.
+      1. **DO NOT CITE SOURCES INLINE**. The UI handles source attribution separately. Your text must be clean.
       2. WIDGETS: Detect intent automatically. Use these formats at the START of your response:
          - Time: ///TIME: HH:MM AM/PM | Weekday, Month DD, YYYY | Location | (Offset)///
          - Weather: ///WEATHER: Location///

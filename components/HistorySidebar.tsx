@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { MessageSquare, X, LogOut, Trash2, Plus, LogIn, Info } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';

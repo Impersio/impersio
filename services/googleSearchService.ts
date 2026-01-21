@@ -1,27 +1,32 @@
+
 import { SearchResult } from "../types";
 
 const TAVILY_API_KEY = "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";
+const EXA_API_KEY = "52f53d72-83fc-46a4-9c8b-eff326dac3f6";
 
-// Using Tavily basic search for "Fast" mode as it's reliable and quick
+// Using Exa AI for "Fast" mode (Keyword search) with Fallback
 export const searchFast = async (query: string): Promise<{ results: SearchResult[]; images: string[] }> => {
   try {
-    const response = await fetch("https://api.tavily.com/search", {
+    // Attempt Exa AI search first
+    const response = await fetch("https://api.exa.ai/search", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-api-key": EXA_API_KEY,
       },
       body: JSON.stringify({
-        api_key: TAVILY_API_KEY,
         query: query,
-        search_depth: "basic", // Basic is faster than advanced
-        max_results: 5,
-        include_images: false,
-        include_answer: false
+        numResults: 10,
+        type: "keyword", // Optimized for speed (0.30s target)
+        contents: {
+          text: true, // Only fetch text, highlights add latency
+        }
       }),
     });
 
     if (!response.ok) {
-       return { results: [], images: [] };
+       // Silent fallback for CORS/API errors to ensure UI continuity
+       throw new Error(`Exa API status: ${response.status}`);
     }
 
     const data = await response.json();
@@ -29,19 +34,24 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
     const results = data.results?.map((item: any) => {
         let hostname = 'Source';
         try { hostname = new URL(item.url).hostname; } catch (e) {}
+        
+        // Use text directly as snippet since we removed highlights for speed
+        const snippet = item.text ? (item.text.substring(0, 200) + "...") : "";
+
         return {
-            title: item.title,
+            title: item.title || hostname,
             link: item.url,
-            snippet: item.content,
+            snippet: snippet,
             displayLink: hostname,
+            publishedDate: item.publishedDate
         };
     }) || [];
 
     return { results, images: [] };
 
   } catch (error) {
-    console.error("Fast Search Error:", error);
-    return { results: [], images: [] };
+    // Fallback to Tavily (using 'basic' depth for speed) if Exa fails (e.g. CORS)
+    return searchWeb(query, 'fast');
   }
 };
 
@@ -78,9 +88,9 @@ export const searchWeb = async (query: string, mode: string = 'web'): Promise<{ 
         api_key: TAVILY_API_KEY,
         query: searchString,
         search_depth: searchDepth,
-        include_images: true, // Always include images for universal mode
+        include_images: true, 
         include_answer: false,
-        max_results: 10, 
+        max_results: 15, 
         include_domains: includeDomains,
         topic: topic
       }),

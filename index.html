@@ -5,10 +5,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
     <title>Impersio</title>
-    <meta name="description" content="Impersio is a free AI-powered search engine." />
+    <meta name="description" content="Impersio is a minimalist AI search engine." />
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 50 40' fill='none' stroke='%2318181b' stroke-width='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='4' y='2' width='20' height='36' rx='10' /%3E%3Crect x='20' y='2' width='20' height='36' rx='10' /%3E%3Ccircle cx='14' cy='11' r='3' fill='%2318181b' stroke='none' /%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%231c7483' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' /%3E%3C/svg%3E">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         darkMode: 'class',
@@ -16,6 +19,7 @@
           extend: {
             fontFamily: {
               sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+              serif: ['"Instrument Serif"', 'Georgia', 'serif'],
             },
             colors: {
               background: 'var(--background)', 
@@ -25,11 +29,21 @@
               primary: 'var(--primary)',    
               muted: 'var(--muted)',      
               'bubble-user': 'var(--bubble-user)',
-              'voice-peach': '#FFD7AE',
-              'voice-text': '#3f2510',
-              'deep-badge-bg': '#3f2510',
-              'deep-badge-text': '#ea7832',
-              'scira-accent': '#20b8cd',
+              'scira-accent': '#2db6c7', // Brighter teal to match reference
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.3s ease-out',
+              'slide-up': 'slideUp 0.4s ease-out',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(10px)', opacity: '0' },
+                '100%': { transform: 'translateY(0)', opacity: '1' },
+              }
             }
           }
         }
@@ -37,31 +51,48 @@
     </script>
     <style>
       :root {
-        /* Light Mode - Adjusted for "Color on sides" effect */
-        --background: #f3f3ee;                 
-        --surface: #ffffff;                    
-        --surface-hover: #f9f9f9;
-        --border: #e5e7eb; 
-        --primary: #18181b;      
-        --muted: #71717a;  
-        --bubble-user: #f4f4f5;                 
+        /* Light Mode */
+        --background: #ffffff;                 
+        --surface: #f3f3f3;                    
+        --surface-hover: #e5e5e5;
+        --border: #e5e5e5; 
+        --primary: #171717;      
+        --muted: #737373;  
+        --bubble-user: #f3f4f6;                 
       }
       
       .dark {
-        /* Deep Dark Mode (Clean Black) - No side color */
-        --background: #000000; 
-        --surface: #18181b;    
-        --surface-hover: #27272a; 
-        --border: #27272a;     
-        --primary: #ffffff;    
-        --muted: #a1a1aa;      
-        --bubble-user: #18181b; 
+        /* Exact Reference Dark Mode */
+        --background: #191919; 
+        --surface: #202020;    
+        --surface-hover: #2f2f2f; 
+        --border: #333333;     
+        --primary: #e8e8e8;    
+        --muted: #a3a3a3;      
+        --bubble-user: #222222; 
       }
 
       body {
         background-color: var(--background);
         color: var(--primary);
-        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-family: '"Plus Jakarta Sans"', sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Thin, elegant scrollbar */
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border); 
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--muted); 
       }
 
       textarea::-webkit-scrollbar {
@@ -72,122 +103,50 @@
         scrollbar-width: none;
       }
       
-      /* Typography & Spacing - Perplexity Specs */
       .markdown-body {
-        line-height: 1.6; 
-        font-size: 16px; /* Body Text: 16px regular */
+        line-height: 1.75; 
+        font-size: 16px; 
         font-weight: 400;
         color: var(--primary);
-        letter-spacing: 0.01em;
       }
       
-      /* Headers */
-      .markdown-body h1 { 
-        font-size: 32px; 
-        font-weight: 600; 
-        margin-top: 24px; 
-        margin-bottom: 16px; 
+      .markdown-body h1, .markdown-body h2, .markdown-body h3 {
         color: var(--primary);
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
       }
       
-      .markdown-body h2 { 
-        font-size: 24px; /* H2: 24-28px bold */
-        font-weight: 600; 
-        margin-top: 24px; 
-        margin-bottom: 16px; 
-        color: var(--primary);
-      }
-      
-      .markdown-body h3 { 
-        font-size: 20px; /* H3: 20px bold */
-        font-weight: 600; 
-        margin-top: 24px; 
-        margin-bottom: 12px; 
-        color: var(--primary);
-      }
-      
-      /* Paragraphs & Spacing */
-      .markdown-body p { 
-        margin-bottom: 16px; /* 16px vertical spacing */
-      }
-      
-      .markdown-body ul, .markdown-body ol { 
-        margin-bottom: 16px; 
-        padding-left: 24px; 
-      }
-      
-      .markdown-body li { 
-        margin-bottom: 8px; 
-        font-size: 15px; /* List items: 15px */
-      }
-      
-      /* Citation Badges styling */
-      .markdown-body a[href^="http"] {
-        display: inline-block;
-        background-color: var(--surface-hover);
-        color: var(--muted);
-        font-size: 12px;
-        padding: 2px 6px;
-        border-radius: 6px;
+      .markdown-body a {
+        color: var(--scira-accent);
         text-decoration: none;
-        margin-left: 4px;
-        vertical-align: middle;
         font-weight: 500;
-        transition: all 0.2s;
-        transform: translateY(-1px);
       }
-      .markdown-body a[href^="http"]:hover {
-        background-color: var(--scira-accent);
-        color: white;
+      .markdown-body a:hover {
+        text-decoration: underline;
       }
 
-      .markdown-body h1:first-child, .markdown-body h2:first-child, .markdown-body h3:first-child {
-        margin-top: 4px;
-      }
-      
       .markdown-body code {
         background-color: var(--surface-hover);
         padding: 0.2em 0.4em;
         border-radius: 4px;
-        font-size: 0.9em;
+        font-size: 0.85em;
+        font-family: monospace;
       }
 
-      /* Table Styles */
-      .markdown-body table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-        margin: 16px 0;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        overflow: hidden;
-      }
-      .markdown-body th {
+      .markdown-body pre {
         background-color: var(--surface-hover);
-        text-align: left;
-        font-weight: 600;
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--border);
-        font-size: 14px;
-      }
-      .markdown-body td {
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--border);
-        vertical-align: top;
-        font-size: 15px;
-        background-color: var(--surface);
-      }
-      .markdown-body tr:last-child td {
-        border-bottom: none;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        overflow-x: auto;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--border);
       }
       
-      /* Smooth fade in */
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      .animate-fade-in {
-        animation: fadeIn 0.4s ease-out forwards;
+      ::selection {
+        background: rgba(45, 182, 199, 0.3);
+        color: white;
       }
     </style>
 <script type="importmap">
@@ -214,4 +173,3 @@
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
-    

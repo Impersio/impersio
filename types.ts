@@ -10,6 +10,7 @@ export interface SearchMode {
 export interface ModelOption {
   id: string;
   name: string;
+  icon: React.ElementType;
 }
 
 export interface SearchResult {

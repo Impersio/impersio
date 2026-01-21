@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 export const XIcon = ({ className }: { className?: string }) => (
@@ -106,32 +107,90 @@ export const DeepSeekIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export const ClaudeIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-     <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM4.5 12C4.5 11.04 4.68 10.12 5.01 9.27C6.06 10.53 7.63 11.36 9.42 11.36C10.74 11.36 11.95 10.89 12.91 10.1C13.23 10.66 13.42 11.31 13.42 12C13.42 14.15 11.68 15.9 9.53 15.9C7.59 15.9 5.98 14.47 5.72 12.61C5.64 12.42 5.6 12.21 5.6 12C5.6 11.95 5.61 11.9 5.61 11.85C5.22 11.8 4.88 11.49 4.88 11.1C4.88 10.71 5.17 10.38 5.54 10.32C4.88 10.79 4.5 11.36 4.5 12ZM19.5 12C19.5 16.14 16.14 19.5 12 19.5C10.68 19.5 9.44 19.16 8.36 18.57C10.22 18.29 11.69 16.79 11.93 14.91C12.39 14.85 12.79 14.61 13.04 14.28C14.12 14.8 15.36 14.85 16.48 14.41C16.82 15.65 17.96 16.57 19.32 16.57C19.38 16.57 19.44 16.57 19.5 16.56V12Z" fill="#D97757" />
-  </svg>
-);
-
-export const MistralIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" className={className}>
-    <path d="M4 19V5L8 9V19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square" />
-    <path d="M8 9L12 5L16 9" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square" />
-    <path d="M16 19V9L20 5V19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square" />
-  </svg>
-);
-
 export const PerplexityIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-     <path d="M5.5 7C5.5 6.17 6.17 5.5 7 5.5H10.5V18.5H7C6.17 18.5 5.5 17.83 5.5 17V7Z" fill="#22B3A6" />
-     <path d="M13.5 5.5H17C17.83 5.5 18.5 6.17 18.5 7V17C18.5 17.83 17.83 18.5 17 18.5H13.5V5.5Z" fill="#22B3A6" />
-     <path d="M10.5 5.5H13.5V8.5H10.5V5.5Z" fill="#22B3A6" fillOpacity="0.6" />
-     <path d="M10.5 15.5H13.5V18.5H10.5V15.5Z" fill="#22B3A6" fillOpacity="0.6" />
+     <path d="M5.5 7C5.5 6.17 6.17 5.5 7 5.5H10.5V18.5H7C6.17 18.5 5.5 17.83 5.5 17V7Z" fill="#1c7483" />
+     <path d="M13.5 5.5H17C17.83 5.5 18.5 6.17 18.5 7V17C18.5 17.83 17.83 18.5 17 18.5H13.5V5.5Z" fill="#1c7483" />
+     <path d="M10.5 5.5H13.5V8.5H10.5V5.5Z" fill="#1c7483" fillOpacity="0.6" />
+     <path d="M10.5 15.5H13.5V18.5H10.5V15.5Z" fill="#1c7483" fillOpacity="0.6" />
   </svg>
 );
 
-export const GrokIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M2 12V2H22V22H2V12ZM4 12V20H20V4H4V12Z" fill="white" />
-    <path d="M8 8H16V16H8V8Z" fill="white" />
+// --- New Icons for Exact Replica ---
+
+export const SearchIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+    <circle cx="11" cy="11" r="7" />
+    <line x1="16.5" y1="16.5" x2="21" y2="21" />
+  </svg>
+);
+
+export const TelescopeIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M10.5 8.5L19.5 17.5" />
+    <path d="M13.5 11.5L20.5 18.5" />
+    <path d="M3.5 20.5L6.5 17.5" />
+    <path d="M4.5 19.5L5.5 18.5" />
+    <path d="M14 10l-2-2 5-5 2 2z" />
+    <path d="M8 12l2-2-1-1-2 2z" />
+    <path d="M7 13l-4 4 1 1 4-4z" />
+    <path d="M14.5 10.5L8.5 16.5" />
+  </svg>
+);
+
+export const GridPlusIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <path d="M14 17h7m-3.5-3.5v7" />
+  </svg>
+);
+
+export const GlobeIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z" />
+  </svg>
+);
+
+export const CPUIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+    <rect x="9" y="9" width="6" height="6" />
+    <line x1="9" y1="1" x2="9" y2="4" />
+    <line x1="15" y1="1" x2="15" y2="4" />
+    <line x1="9" y1="20" x2="9" y2="23" />
+    <line x1="15" y1="20" x2="15" y2="23" />
+    <line x1="20" y1="9" x2="23" y2="9" />
+    <line x1="20" y1="14" x2="23" y2="14" />
+    <line x1="1" y1="9" x2="4" y2="9" />
+    <line x1="1" y1="14" x2="4" y2="14" />
+  </svg>
+);
+
+export const MicIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+    <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+    <line x1="12" y1="19" x2="12" y2="23" />
+    <line x1="8" y1="23" x2="16" y2="23" />
+  </svg>
+);
+
+export const PaperclipIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+  </svg>
+);
+
+export const SoundWaveIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="12" y1="6" x2="12" y2="18" />
+    <line x1="8" y1="9" x2="8" y2="15" />
+    <line x1="16" y1="9" x2="16" y2="15" />
+    <line x1="4" y1="11" x2="4" y2="13" />
+    <line x1="20" y1="11" x2="20" y2="13" />
   </svg>
 );

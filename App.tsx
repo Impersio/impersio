@@ -1,35 +1,42 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { 
-  Paperclip, 
   ChevronDown, 
-  Globe, 
   ArrowUp,
   Sun,
   Moon,
-  Mic,
   CornerDownRight,
   Copy,
-  Share,
   RotateCcw,
   Menu,
-  Check,
   X,
-  Zap,
   Loader2,
-  Image as ImageIcon,
-  Presentation,
   ThumbsUp,
   ThumbsDown,
-  MoreHorizontal,
+  ArrowRight,
+  HelpCircle,
+  Plus,
+  BookOpen,
+  ChevronRight,
+  Share,
   Download,
-  Sparkles
+  MoreHorizontal,
+  Check,
+  FileText,
+  Scale,
+  Heart,
+  Lightbulb,
+  Search,
+  DollarSign,
+  Baby,
+  Plane
 } from 'lucide-react';
 import { streamResponse, generateSearchQueries, generateManualQueries } from './services/geminiService';
 import { searchWeb, searchFast } from './services/googleSearchService';
 import { createConversation, saveMessage, getConversationMessages } from './services/chatStorageService';
 import { supabase } from './services/supabaseClient';
-import { Message, SearchResult, WidgetData } from './types';
+import { Message, SearchResult, WidgetData, ModelOption } from './types';
 import { Discover } from './components/Discover';
 import { About } from './components/About';
 import { TimeWidget } from './components/TimeWidget';
@@ -39,6 +46,7 @@ import { SlidesWidget } from './components/SlidesWidget';
 import { AuthModal } from './components/AuthModal';
 import { HistorySidebar } from './components/HistorySidebar';
 import { MessageContent } from './components/MessageContent';
+import { ModelSelector } from './components/ModelSelector';
 import { 
   ReasoningIcon, 
   GeminiIcon, 
@@ -46,245 +54,294 @@ import {
   OpenAIIcon, 
   MetaIcon, 
   KimiIcon, 
-  QwenIcon
+  QwenIcon,
+  SearchIcon,
+  TelescopeIcon,
+  GridPlusIcon,
+  GlobeIcon,
+  CPUIcon,
+  PaperclipIcon,
+  MicIcon,
+  SoundWaveIcon
 } from './components/Icons';
 
 // Model Options matching user request
-const MODEL_OPTIONS = [
-  { id: 'gemini-3-flash', name: 'Gemini 3.0 Flash', icon: GeminiIcon },
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', icon: GeminiIcon },
-  { id: 'gpt-oss-120b', name: 'GPT OSS 120B', icon: OpenAIIcon },
-  { id: 'llama-4-maverick', name: 'Llama 4 Maverick', icon: MetaIcon },
+const MODEL_OPTIONS: ModelOption[] = [
+  { id: 'gemini-3-flash', name: 'Gemini 3.0', icon: GeminiIcon },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0', icon: GeminiIcon },
+  { id: 'gpt-oss-120b', name: 'GPT-4o', icon: OpenAIIcon },
+  { id: 'llama-4-maverick', name: 'Llama 3.3', icon: MetaIcon },
   { id: 'kimi-k2', name: 'Kimi K2', icon: KimiIcon },
-  { id: 'qwen-3-32b', name: 'Qwen 3', icon: QwenIcon },
-  { id: 'mimo-v2-flash', name: 'Mimo V2 Flash', icon: MimoIcon },
+  { id: 'qwen-3-32b', name: 'Qwen 2.5', icon: QwenIcon },
+  { id: 'mimo-v2-flash', name: 'Mimo Flash', icon: MimoIcon },
 ];
 
 const SKIP_SEARCH_REGEX = /^(hi|hello|hey|greetings|sup|howdy|yo|good\s*(morning|afternoon|evening|night)|how\s*are\s*you|who\s*are\s*you|what\s*is\s*your\s*name|help|test|what\s*can\s*you\s*do|what\s*are\s*your\s*features|capabilities|features)$/i;
+const STORAGE_KEY = 'impersio_chat_state';
 
 export const ImpersioLogo = ({ isMobile, compact = false }: { isMobile?: boolean; compact?: boolean }) => (
-  <div className={`flex items-center ${compact ? 'gap-2' : 'gap-3'} select-none transition-transform duration-300 hover:scale-105 cursor-default`}>
-    <div className={`${compact ? 'w-6 h-6' : (isMobile ? 'w-10 h-10' : 'w-12 h-12')} relative flex items-center justify-center text-primary`}>
-       <svg viewBox="0 0 50 40" fill="none" stroke="currentColor" strokeWidth="4" className="w-full h-full">
-          <rect x="4" y="2" width="20" height="36" rx="10" />
-          <rect x="20" y="2" width="20" height="36" rx="10" />
-          <circle cx="14" cy="11" r="3" fill="currentColor" stroke="none" />
-       </svg>
-    </div>
-    <span className={`font-sans font-medium tracking-tight text-primary ${compact ? 'text-lg' : (isMobile ? 'text-4xl' : 'text-5xl')}`}>
-      Impersio
+  <div className={`flex items-center gap-2 select-none transition-opacity duration-300 ${compact ? 'opacity-100' : ''}`}>
+    <span className={`font-serif tracking-tight text-primary ${compact ? 'text-2xl' : (isMobile ? 'text-4xl' : 'text-6xl')}`}>
+      perplexity
     </span>
   </div>
 );
 
-const SourcesGrid = ({ sources }: { sources: SearchResult[] }) => {
-  const [expanded, setExpanded] = useState(false);
-  
-  if (!sources || sources.length === 0) return null;
-  
-  const displayedSources = expanded ? sources : sources.slice(0, 4);
-  const hiddenCount = sources.length - 4;
+interface SourceCardProps {
+  source: SearchResult;
+  index: number;
+}
 
-  return (
-    <div className="">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {displayedSources.map((source, i) => (
-                <a 
-                    key={i} 
-                    href={source.link}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-lg bg-surface hover:bg-surface-hover border border-border transition-all duration-200 group h-full hover:scale-[1.02] hover:shadow-md"
-                >
-                    <div className="w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center shrink-0">
-                        <img 
-                            src={`https://www.google.com/s2/favicons?domain=${new URL(source.link).hostname}&sz=64`}
-                            className="w-3 h-3 opacity-70 group-hover:opacity-100 transition-opacity"
-                            onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
-                        />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <div className="text-xs font-medium text-primary truncate group-hover:text-scira-accent transition-colors">{source.title}</div>
-                        <div className="text-[10px] text-muted truncate opacity-80">{source.displayLink}</div>
-                    </div>
-                </a>
-            ))}
-            {!expanded && hiddenCount > 0 && (
-                <button 
-                    onClick={() => setExpanded(true)}
-                    className="flex items-center justify-center gap-2 p-3 rounded-lg bg-surface hover:bg-surface-hover border border-border transition-all duration-200 text-xs font-medium text-muted hover:text-primary h-full"
-                >
-                    <span className="w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center">
-                        +{hiddenCount}
-                    </span>
-                    View {hiddenCount} more
-                </button>
-            )}
-        </div>
-    </div>
-  );
-};
+const SourceCard: React.FC<SourceCardProps> = ({ source, index }) => (
+  <a 
+      href={source.link}
+      target="_blank"
+      rel="noreferrer"
+      className="flex flex-col p-3 rounded-lg bg-surface hover:bg-surface-hover border border-border transition-all duration-200 group h-auto"
+  >
+      <div className="text-[12px] text-primary font-medium group-hover:text-scira-accent transition-colors line-clamp-2 leading-tight mb-2">{source.title}</div>
+      <div className="flex items-center gap-2">
+           <img 
+              src={`https://www.google.com/s2/favicons?domain=${new URL(source.link).hostname}&sz=32`}
+              className="w-3.5 h-3.5 rounded-full opacity-70 group-hover:opacity-100 transition-opacity"
+              onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+          />
+          <div className="text-[10px] text-muted truncate opacity-80">{source.displayLink}</div>
+          <div className="text-[10px] text-muted/50 ml-auto">{index + 1}</div>
+      </div>
+  </a>
+);
 
 interface MessageItemProps {
   msg: Message;
   isLast: boolean;
   isLoading: boolean;
   onSearch: (q: string) => void;
+  searchStatus: string;
 }
 
-// Extracted Message Item Component
 const MessageItem: React.FC<MessageItemProps> = ({ 
   msg, 
   isLast, 
   isLoading, 
-  onSearch 
+  onSearch,
+  searchStatus
 }) => {
   const [showSources, setShowSources] = useState(false);
 
+  if (!msg) return null;
+
+  // User Message (Right-aligned bubble per Perplexity style)
   if (msg.role === 'user') {
     return (
-      <div className="flex flex-col items-end animate-fade-in gap-2 mb-8">
-          <div className="max-w-2xl text-right">
-            <div className="inline-block bg-surface-hover text-primary px-5 py-2.5 rounded-2xl text-lg md:text-xl">
-              {msg.content}
-            </div>
+      <div className="w-full max-w-3xl mx-auto py-6 flex justify-end animate-fade-in px-4">
+          <div className="bg-surface border border-border px-5 py-3 rounded-[2rem] rounded-tr-sm max-w-[85%] sm:max-w-[70%] text-primary font-normal text-lg leading-relaxed break-words">
+            {msg.content}
+            {msg.images && msg.images.length > 0 && (
+              <div className="flex gap-2 mt-4 flex-wrap justify-end">
+                {msg.images.map((img, i) => (
+                  <img key={i} src={img} className="h-16 w-16 rounded-xl object-cover border border-border" />
+                ))}
+              </div>
+            )}
           </div>
-          {msg.images && msg.images.length > 0 && (
-            <div className="flex gap-2 justify-end">
-              {msg.images.map((img, i) => (
-                <img key={i} src={img} className="h-16 w-16 rounded-xl object-cover border border-border" />
-              ))}
-            </div>
-          )}
       </div>
     );
   }
 
   // Assistant Message
   return (
-      <div className="w-full max-w-3xl mx-auto animate-fade-in mb-12">
-        {/* Widgets */}
-        {msg.widget && (
-            <div className="mb-8">
-              {msg.widget.type === 'time' && <TimeWidget data={msg.widget.data} />}
-              {msg.widget.type === 'weather' && <WeatherWidget data={msg.widget.data} />}
-              {msg.widget.type === 'stock' && <StockWidget data={msg.widget.data} />}
-              {msg.widget.type === 'slides' && <SlidesWidget data={msg.widget.data} />}
-            </div>
-        )}
-
-        {/* Images Carousel */}
-        {msg.images && msg.images.length > 0 && (
-            <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide -mx-2 px-2 mb-8">
-                {msg.images.map((img, i) => (
-                <div key={i} className="flex-none h-32 w-auto aspect-video rounded-xl overflow-hidden bg-surface relative border border-border shadow-sm group">
-                    <img 
-                        src={img} 
-                        alt={`Result ${i + 1}`} 
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                        loading="lazy"
-                    />
-                </div>
-                ))}
-            </div>
-        )}
+      <div className="w-full max-w-3xl mx-auto pb-8 animate-fade-in flex flex-col gap-4 px-4">
         
-        {/* Text Content */}
-        <div className="prose prose-neutral dark:prose-invert max-w-none mb-6">
-            <MessageContent 
-              content={msg.content} 
-              isStreaming={isLast && isLoading} 
-            />
-        </div>
-
-        {/* Related Questions */}
-        {msg.relatedQuestions && msg.relatedQuestions.length > 0 && (
-            <div className="mt-6 mb-8 border-t border-border pt-4">
-              <h4 className="text-sm font-medium text-primary mb-3 flex items-center gap-2">
-                 <CornerDownRight className="w-4 h-4 text-muted" />
-                 Related
-              </h4>
-              <div className="flex flex-col gap-2">
-                  {msg.relatedQuestions.map((q, i) => (
-                    <button 
-                        key={i}
-                        onClick={() => onSearch(q)}
-                        className="text-left text-primary hover:text-scira-accent transition-colors py-2 px-1 flex items-center gap-3 group"
-                    >
-                        <span className="font-medium text-[15px]">{q}</span>
-                    </button>
-                  ))}
-              </div>
-            </div>
-        )}
-
-        {/* Action Bar */}
-        <div className="flex items-center justify-between mt-6 pt-2 select-none">
-            <div className="flex items-center gap-1">
-                 <button className="p-2 text-muted hover:text-primary transition-colors rounded-lg hover:bg-surface-hover" title="Share">
-                   <Share className="w-4 h-4" />
-                 </button>
-                 <button className="p-2 text-muted hover:text-primary transition-colors rounded-lg hover:bg-surface-hover" title="Rewrite">
-                   <RotateCcw className="w-4 h-4" />
-                 </button>
-                 <button className="p-2 text-muted hover:text-primary transition-colors rounded-lg hover:bg-surface-hover" title="Copy">
-                   <Copy className="w-4 h-4" />
-                 </button>
-                 
-                 <div className="h-4 w-[1px] bg-border mx-2"></div>
-
-                 {/* Sources Toggle Button */}
-                 {msg.sources && msg.sources.length > 0 && (
-                    <button 
-                        onClick={() => setShowSources(!showSources)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ml-1 ${showSources ? 'bg-surface-hover border-border text-primary' : 'bg-surface border-border text-muted hover:text-primary hover:bg-surface-hover'}`}
-                    >
-                        <div className="flex items-center justify-center">
-                           <Globe className="w-3.5 h-3.5" />
-                        </div>
-                        {msg.sources.length} sources
-                    </button>
+        {/* Main Content */}
+        <div className="flex-1 min-w-0">
+            
+            {/* Thinking / Steps Indicator */}
+            <div className="flex items-center gap-2 mb-4 text-xs text-muted/80 font-medium cursor-pointer hover:text-primary transition-colors select-none">
+                 {isLoading && isLast && !msg.content ? (
+                    <div className="flex items-center gap-2">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>{searchStatus || "Thinking..."}</span>
+                    </div>
+                 ) : (
+                    <div className="flex items-center gap-2">
+                         <div className="flex items-center justify-center w-4 h-4 rounded-full bg-surface border border-border">
+                            <Check className="w-2.5 h-2.5 text-primary" />
+                         </div>
+                         <span>1 step completed</span>
+                         <ChevronRight className="w-3 h-3" />
+                    </div>
                  )}
             </div>
 
-            <div className="flex items-center gap-1">
-                <button className="p-2 text-muted hover:text-primary transition-colors rounded-lg hover:bg-surface-hover">
-                  <ThumbsUp className="w-4 h-4" />
-                </button>
-                <button className="p-2 text-muted hover:text-primary transition-colors rounded-lg hover:bg-surface-hover">
-                  <ThumbsDown className="w-4 h-4" />
-                </button>
-                <button className="p-2 text-muted hover:text-primary transition-colors rounded-lg hover:bg-surface-hover">
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
-            </div>
-        </div>
+            {/* Widgets */}
+            {msg.widget && (
+                <div className="mb-6">
+                  {msg.widget.type === 'time' && <TimeWidget data={msg.widget.data} />}
+                  {msg.widget.type === 'weather' && <WeatherWidget data={msg.widget.data} />}
+                  {msg.widget.type === 'stock' && <StockWidget data={msg.widget.data} />}
+                  {msg.widget.type === 'slides' && <SlidesWidget data={msg.widget.data} />}
+                </div>
+            )}
 
-        {/* Collapsible Sources Panel */}
-        {showSources && msg.sources && (
-            <div className="mt-4 pt-4 border-t border-border animate-in fade-in slide-in-from-top-2">
-                <SourcesGrid sources={msg.sources} />
+            {/* Images Carousel */}
+            {msg.images && msg.images.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
+                    {msg.images.slice(0, 3).map((img, i) => (
+                    <div key={i} className="aspect-video rounded-xl overflow-hidden bg-surface border border-border relative group">
+                        <img 
+                            src={img} 
+                            alt={`Result ${i + 1}`} 
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                            loading="lazy"
+                        />
+                    </div>
+                    ))}
+                </div>
+            )}
+            
+            {/* Text Content */}
+            <div className="prose prose-neutral dark:prose-invert max-w-none mb-2 leading-relaxed text-[17px] font-light text-primary/90">
+                <MessageContent 
+                  content={msg.content} 
+                  isStreaming={isLast && isLoading} 
+                />
             </div>
-        )}
+
+            {/* Action Bar (Exact Match) */}
+            <div className="flex flex-wrap items-center justify-between gap-4 mt-6">
+                
+                {/* Left Actions */}
+                <div className="flex items-center gap-1">
+                    <button className="p-2 text-muted hover:text-primary transition-colors rounded-full hover:bg-surface-hover" title="Share">
+                        <Share className="w-4 h-4" />
+                    </button>
+                    <button className="p-2 text-muted hover:text-primary transition-colors rounded-full hover:bg-surface-hover" title="Download">
+                        <Download className="w-4 h-4" />
+                    </button>
+                    <button className="p-2 text-muted hover:text-primary transition-colors rounded-full hover:bg-surface-hover" title="Copy">
+                        <Copy className="w-4 h-4" />
+                    </button>
+                    <button className="p-2 text-muted hover:text-primary transition-colors rounded-full hover:bg-surface-hover" title="Reload">
+                        <RotateCcw className="w-4 h-4" />
+                    </button>
+                </div>
+
+                {/* Center Sources (Overlapping) */}
+                {msg.sources && msg.sources.length > 0 && (
+                     <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setShowSources(!showSources)}>
+                        <div className="flex -space-x-2">
+                           {msg.sources.slice(0, 3).map((s, i) => (
+                              <div key={i} className="w-6 h-6 rounded-full border-2 border-background bg-surface overflow-hidden relative z-[3] first:z-[3] second:z-[2] third:z-[1]">
+                                 <img 
+                                   src={`https://www.google.com/s2/favicons?domain=${new URL(s.link).hostname}&sz=32`} 
+                                   className="w-full h-full object-cover"
+                                   onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                                 />
+                              </div>
+                           ))}
+                           <div className="w-6 h-6 rounded-full border-2 border-background bg-surface-hover flex items-center justify-center relative z-0">
+                               <span className="text-[9px] font-bold text-muted">
+                                  <ImpersioLogo compact />
+                               </span>
+                           </div>
+                        </div>
+                        <span className="text-sm text-muted group-hover:text-primary transition-colors font-medium">
+                            {msg.sources.length} sources
+                        </span>
+                     </div>
+                )}
+
+                {/* Right Actions */}
+                <div className="flex items-center gap-1">
+                     <button className="p-2 text-muted hover:text-primary transition-colors rounded-full hover:bg-surface-hover">
+                       <ThumbsUp className="w-4 h-4" />
+                     </button>
+                     <button className="p-2 text-muted hover:text-primary transition-colors rounded-full hover:bg-surface-hover">
+                       <ThumbsDown className="w-4 h-4" />
+                     </button>
+                     <button className="p-2 text-muted hover:text-primary transition-colors rounded-full hover:bg-surface-hover">
+                       <MoreHorizontal className="w-4 h-4" />
+                     </button>
+                </div>
+            </div>
+            
+            {/* Expanded Sources View */}
+            {showSources && msg.sources && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {msg.sources.map((source, i) => (
+                    <SourceCard key={i} source={source} index={i} />
+                    ))}
+                </div>
+            )}
+
+            {/* Related Questions */}
+            {msg.relatedQuestions && msg.relatedQuestions.length > 0 && (
+                <div className="mt-8 pt-6 border-t border-border/40">
+                  <h4 className="text-base font-medium text-primary mb-4">Related</h4>
+                  <div className="flex flex-col gap-0">
+                      {msg.relatedQuestions.map((q, i) => (
+                        <button 
+                            key={i}
+                            onClick={() => onSearch(q)}
+                            className="flex items-center justify-between w-full py-3 text-left text-primary hover:bg-surface-hover/50 px-2 rounded-lg transition-colors group border-b border-border/40 last:border-0"
+                        >
+                            <span className="text-[16px] font-light">{q}</span>
+                            <Plus className="w-4 h-4 text-muted group-hover:text-primary transition-colors" />
+                        </button>
+                      ))}
+                  </div>
+                </div>
+            )}
+        </div>
       </div>
   );
 };
 
 export default function App() {
+  // Load initial state from localStorage
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.messages || [];
+      }
+    } catch(e) {}
+    return [];
+  });
+
+  const [hasSearched, setHasSearched] = useState(() => {
+    try {
+       const saved = localStorage.getItem(STORAGE_KEY);
+       if (saved) return JSON.parse(saved).hasSearched || false;
+    } catch(e) {}
+    return false;
+  });
+
+  // Home View Mode: default, summarize, compare, info, recommend
+  const [homeViewMode, setHomeViewMode] = useState<'default' | 'summarize' | 'compare' | 'info' | 'recommend'>('default');
+
   const [query, setQuery] = useState('');
   const [activeMode, setActiveMode] = useState<string>('auto'); 
-  const [selectedModel, setSelectedModel] = useState(MODEL_OPTIONS[0]);
+  const [selectedModel, setSelectedModel] = useState<ModelOption>(MODEL_OPTIONS[0]);
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [isReasoningEnabled, setIsReasoningEnabled] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchStatus, setSearchStatus] = useState<string>(''); 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [hasSearched, setHasSearched] = useState(false);
-  const [currentTitle, setCurrentTitle] = useState("New Search");
+  
+  const [currentTitle, setCurrentTitle] = useState(() => {
+     try {
+       const saved = localStorage.getItem(STORAGE_KEY);
+       if (saved) return JSON.parse(saved).currentTitle || "New Search";
+     } catch(e) {}
+     return "New Search";
+  });
   const [view, setView] = useState<'home' | 'discover' | 'about'>('home');
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [attachments, setAttachments] = useState<string[]>([]);
@@ -294,6 +351,17 @@ export default function App() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  // Persistence Effect
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        messages,
+        hasSearched,
+        currentTitle
+      }));
+    }
+  }, [messages, hasSearched, currentTitle]);
 
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -330,10 +398,17 @@ export default function App() {
     }
   }, []);
 
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  };
+
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
     }
   }, [query]);
 
@@ -341,7 +416,7 @@ export default function App() {
     if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, isLoading, isSearching]);
+  }, [messages.length, isSearching]); 
 
   const shouldSearchWeb = (query: string, mode: string | null): boolean => {
     if (mode && mode !== 'web' && mode !== 'fast' && mode !== 'auto') return true;
@@ -367,10 +442,13 @@ export default function App() {
     const finalQuery = overrideQuery || query;
     if ((!finalQuery.trim() && attachments.length === 0) || isLoading) return;
 
+    // Reset View Mode on Search
+    setHomeViewMode('default');
     setIsLoading(true);
     setQuery(''); 
     const currentAttachments = [...attachments];
     setAttachments([]);
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
     let currentConversationId = conversationId;
 
@@ -404,25 +482,50 @@ export default function App() {
 
       if (needsSearch) {
         setIsSearching(true);
-        setSearchStatus('Thinking...');
+        setSearchStatus('Thinking');
         
-        const isComplex = finalQuery.split(' ').length > 8 || finalQuery.toLowerCase().includes('report') || finalQuery.toLowerCase().includes('analysis');
+        // Define Complexity based on length or research keywords
+        const isComplex = finalQuery.split(' ').length > 8 || finalQuery.toLowerCase().includes('report') || finalQuery.toLowerCase().includes('analysis') || activeMode === 'research';
 
-        if (!isComplex && activeMode === 'auto') {
+        // Fast/Normal Mode: Use Exa (searchFast) exclusively
+        if (activeMode === 'fast' || (!isComplex && activeMode === 'auto')) {
+             setSearchStatus('Searching...');
              const { results, images } = await searchFast(finalQuery);
              searchResults = results;
              searchImages = images;
         } else {
-             const queriesToRun = generateManualQueries(finalQuery);
-             setSearchStatus(`Analyzing...`);
+             // Research Mode (Deep/Complex): Mix Exa + Tavily
+             setSearchStatus('Deep Researching...');
              
-             const searchPromises = queriesToRun.slice(0, 3).map(q => searchWeb(q, 'web'));
-             const resultsArray = await Promise.all(searchPromises);
+             const queriesToRun = generateManualQueries(finalQuery);
+             
+             // Run Tavily (Breadth)
+             const tavilyPromise = Promise.all(queriesToRun.slice(0, 3).map(q => searchWeb(q, 'web')));
+             
+             // Run Exa (Speed/Neural)
+             const exaPromise = searchFast(finalQuery);
+
+             // Combine results
+             const [resultsArray, exaResult] = await Promise.all([
+                 tavilyPromise,
+                 exaPromise
+             ]);
              
              const allResults: SearchResult[] = [];
              const seenLinks = new Set<string>();
              const allImages: string[] = [];
  
+             // Add Exa Results First (High Quality / Neural)
+             if (exaResult && exaResult.results) {
+                 exaResult.results.forEach(item => {
+                     if (!seenLinks.has(item.link)) {
+                         seenLinks.add(item.link);
+                         allResults.push(item);
+                     }
+                 });
+             }
+
+             // Add Tavily Results
              resultsArray.forEach(res => {
                  if (res.images) allImages.push(...res.images);
                  res.results.forEach(item => {
@@ -433,7 +536,7 @@ export default function App() {
                  });
              });
  
-             searchResults = allResults.slice(0, 20);
+             searchResults = allResults.slice(0, 25); 
              searchImages = [...new Set(allImages)]; 
         }
 
@@ -458,6 +561,7 @@ export default function App() {
         (chunkText) => {
           setMessages(prev => {
             const newMessages = [...prev];
+            if (newMessages.length === 0) return prev;
             const lastMsg = newMessages[newMessages.length - 1];
             if (lastMsg.role === 'assistant') {
               lastMsg.content = chunkText;
@@ -468,6 +572,7 @@ export default function App() {
         (widgetData: WidgetData) => {
            setMessages(prev => {
             const newMessages = [...prev];
+            if (newMessages.length === 0) return prev;
             const lastMsg = newMessages[newMessages.length - 1];
             if (lastMsg.role === 'assistant') {
               lastMsg.widget = widgetData;
@@ -478,6 +583,7 @@ export default function App() {
         (relatedQuestions: string[]) => {
             setMessages(prev => {
                 const newMessages = [...prev];
+                if (newMessages.length === 0) return prev;
                 const lastMsg = newMessages[newMessages.length - 1];
                 if (lastMsg.role === 'assistant') {
                   lastMsg.relatedQuestions = relatedQuestions;
@@ -580,19 +686,32 @@ export default function App() {
 
   const handleNewChat = () => {
      setHasSearched(false);
+     setHomeViewMode('default');
      setMessages([]);
      setConversationId(null);
      setCurrentTitle("New Search");
      setQuery('');
      setAttachments([]);
+     localStorage.removeItem(STORAGE_KEY); 
+  };
+
+  // Helper to resolve placeholder based on view mode
+  const getPlaceholder = () => {
+    switch(homeViewMode) {
+      case 'summarize': return 'Summarize';
+      case 'compare': return 'Compare';
+      case 'recommend': return 'Recommend';
+      case 'info': return 'How'; 
+      default: return 'Ask anything. Type @ for mentions and / for shortcuts.';
+    }
   };
 
   const renderHeader = (compact: boolean) => (
-    <div className="absolute top-0 left-0 w-full p-4 flex justify-between items-start z-50 pointer-events-none">
+    <header className="fixed top-0 left-0 w-full p-4 flex justify-between items-center z-40 bg-transparent pointer-events-none">
        <div className="flex items-center gap-3 pointer-events-auto">
           <button 
              onClick={() => setIsHistoryOpen(true)}
-             className="p-2 text-muted hover:text-primary rounded-xl hover:bg-surface/50 transition-colors backdrop-blur-sm"
+             className="p-2 text-muted hover:text-primary rounded-xl hover:bg-surface-hover transition-colors"
           >
              <Menu className="w-5 h-5" />
           </button>
@@ -605,44 +724,66 @@ export default function App() {
             </button>
           )}
        </div>
-       <div className="pointer-events-auto">
+       <div className="flex items-center gap-2 pointer-events-auto">
            {!user && (
               <button 
                  onClick={() => setIsAuthModalOpen(true)}
-                 className="text-xs font-medium px-4 py-2 bg-surface hover:bg-surface-hover border border-border rounded-full transition-all shadow-sm text-primary"
+                 className="text-xs font-semibold px-4 py-2 bg-white text-black rounded-full hover:opacity-90 transition-all shadow-sm"
               >
-                 Sign In
+                 Sign Up
               </button>
            )}
            {user && (
               <button 
                 onClick={() => setIsHistoryOpen(true)} 
-                className="w-8 h-8 rounded-full bg-scira-accent/20 text-scira-accent flex items-center justify-center font-medium text-xs border border-scira-accent/30"
+                className="w-8 h-8 rounded-full bg-scira-accent/10 text-scira-accent flex items-center justify-center font-medium text-xs border border-scira-accent/20"
               >
                   {user.email?.[0].toUpperCase()}
               </button>
            )}
        </div>
-    </div>
+    </header>
   );
 
   const renderInputBar = (isInitial: boolean) => (
-    <div className={`w-full max-w-[672px] mx-auto relative z-10`}>
+    <div className={`w-full ${isInitial ? 'max-w-3xl' : 'max-w-3xl'} mx-auto relative z-30 transition-all duration-500`}>
+      {/* Title / Headline for modes */}
+      {isInitial && homeViewMode !== 'default' && (
+         <div className="mb-4 pl-1">
+             <span className="text-sm font-medium text-muted uppercase tracking-wide opacity-0">{/* spacer */}</span>
+         </div>
+      )}
+
       <div className={`
         relative flex flex-col w-full bg-surface 
-        rounded-[32px] 
-        border border-border/50 
+        rounded-xl
+        border border-border 
         shadow-sm group 
-        focus-within:border-muted/40 focus-within:shadow-md
+        focus-within:border-border focus-within:ring-1 focus-within:ring-border focus-within:shadow-lg
         transition-all duration-300
-        ${isMobile ? 'p-3' : 'p-4'}
+        overflow-visible
+        p-3 md:p-4
       `}>
+         {/* Input Area */}
+         <textarea
+            ref={textareaRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            placeholder={isInitial ? getPlaceholder() : "Ask a follow-up"}
+            className={`w-full bg-transparent text-primary placeholder-muted/60 ${isInitial ? 'text-lg' : 'text-[15px]'} font-light px-0 focus:outline-none resize-none overflow-hidden max-h-[200px] font-sans`}
+            style={{ minHeight: isInitial ? '60px' : '40px' }}
+            rows={1}
+            autoFocus={isInitial && !isMobile}
+          />
+
          {/* Attachment Previews */}
          {attachments.length > 0 && (
-           <div className="flex items-center gap-2 px-2 pb-2 overflow-x-auto">
+           <div className="flex items-center gap-2 py-2 overflow-x-auto">
              {attachments.map((img, idx) => (
                <div key={idx} className="relative group/image">
-                 <div className="w-12 h-12 rounded-lg overflow-hidden border border-border">
+                 <div className="w-16 h-16 rounded-lg overflow-hidden border border-border">
                     <img src={img} alt="attachment" className="w-full h-full object-cover" />
                  </div>
                  <button 
@@ -656,66 +797,44 @@ export default function App() {
            </div>
          )}
 
-         <textarea
-            ref={textareaRef}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            placeholder={isMobile ? "Ask anything..." : "Ask anything..."}
-            className={`w-full bg-transparent text-primary placeholder-muted/50 text-[16px] px-1 focus:outline-none resize-none overflow-hidden min-h-[24px] max-h-[200px] mb-2`}
-            style={{ lineHeight: '1.5' }}
-            rows={1}
-            autoFocus={isInitial && !isMobile}
-          />
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1 -ml-2">
-               {/* Reasoning Toggle */}
+          {/* Controls Bar */}
+          <div className="flex items-center justify-between mt-2">
+            {/* Left Pill Group (Search Modes) */}
+            <div className="flex items-center p-0.5 bg-surface-hover/30 rounded-full border border-border/50">
                <button 
-                 onClick={() => setIsReasoningEnabled(!isReasoningEnabled)}
-                 className={`p-2 rounded-full transition-colors duration-200 group/btn flex items-center gap-2 ${isReasoningEnabled ? 'text-scira-accent bg-scira-accent/10' : 'text-muted hover:text-primary hover:bg-surface-hover'}`}
-                 title="Reasoning"
+                 onClick={() => setActiveMode('auto')}
+                 className={`p-2 rounded-full transition-all duration-200 ${activeMode === 'auto' ? 'text-scira-accent bg-surface border border-scira-accent/30 shadow-[0_0_10px_-3px_rgba(45,182,199,0.3)]' : 'text-muted hover:text-primary'}`}
+                 title="Focus"
                >
-                 <ReasoningIcon className="w-5 h-5 stroke-[1.5]" />
+                 <SearchIcon className="w-4 h-4" />
                </button>
 
-               {/* Model Selector */}
-               <div className="relative">
-                  <button 
-                    onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-                    className="flex items-center justify-center p-2 rounded-full text-muted hover:text-primary hover:bg-surface-hover transition-colors"
-                  >
-                    <Sparkles className="w-5 h-5 stroke-[1.5] text-purple-400" />
-                  </button>
-                  
-                  {isModelDropdownOpen && (
-                      <div className="absolute bottom-full mb-2 left-0 w-60 bg-surface border border-border rounded-xl shadow-xl z-50 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                        {MODEL_OPTIONS.map(model => (
-                          <button
-                            key={model.id}
-                            onClick={() => {
-                              setSelectedModel(model);
-                              setIsModelDropdownOpen(false);
-                            }}
-                            className={`w-full text-left px-4 py-3 text-sm transition-colors flex items-center justify-between group
-                              ${selectedModel.id === model.id ? 'bg-surface-hover text-scira-accent' : 'text-muted hover:bg-surface-hover hover:text-scira-accent'}
-                            `}
-                          >
-                            <div className="flex items-center gap-3">
-                              <model.icon className={`w-5 h-5 ${selectedModel.id === model.id ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`} />
-                              <span className="font-medium">{model.name}</span>
-                            </div>
-                            {selectedModel.id === model.id && (
-                              <Check className="w-4 h-4 text-scira-accent" />
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-               </div>
+               <button 
+                 onClick={() => setActiveMode('research')}
+                 className={`p-2 rounded-full transition-all duration-200 ${activeMode === 'research' ? 'text-scira-accent bg-surface border border-scira-accent/30 shadow-sm' : 'text-muted hover:text-primary'}`}
+                 title="Deep Research"
+               >
+                 <TelescopeIcon className="w-4 h-4" />
+               </button>
 
-               {/* File Input */}
+               <button 
+                 onClick={() => setActiveMode('slides')}
+                 className={`p-2 rounded-full transition-all duration-200 ${activeMode === 'slides' ? 'text-scira-accent bg-surface border border-scira-accent/30 shadow-sm' : 'text-muted hover:text-primary'}`}
+                 title="Library"
+               >
+                 <GridPlusIcon className="w-4 h-4" />
+               </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+               {/* Right Side Icons */}
+               <button className="text-muted hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-hover" title="Language/Region">
+                  <GlobeIcon className="w-4 h-4" />
+               </button>
+               <button className="text-muted hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-hover" title="Pro">
+                  <CPUIcon className="w-4 h-4" />
+               </button>
+               
                <input 
                  type="file" 
                  multiple 
@@ -726,33 +845,80 @@ export default function App() {
                />
                <button 
                  onClick={() => fileInputRef.current?.click()}
-                 className="p-2 rounded-full text-muted hover:text-primary hover:bg-surface-hover transition-colors"
+                 className="text-muted hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-hover"
+                 title="Attach"
                >
-                 <Paperclip className="w-5 h-5 stroke-[1.5]" />
+                 <PaperclipIcon className="w-4 h-4" />
                </button>
-            </div>
+               
+               <button className="text-muted hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-hover" title="Voice">
+                 <MicIcon className="w-4 h-4" />
+               </button>
 
-            <div className="flex items-center gap-2">
-               {query.trim().length > 0 || attachments.length > 0 ? (
-                 <button 
-                    onClick={() => handleSearch()}
-                    className="flex items-center justify-center h-8 w-8 bg-scira-accent hover:opacity-90 rounded-lg text-background transition-all duration-200 shadow-sm"
-                 >
-                    <ArrowUp className="w-4 h-4 stroke-[2.5]" />
-                 </button>
-               ) : (
-                 <button className="flex items-center justify-center p-2 rounded-full bg-surface-hover/50 text-primary transition-all duration-200 hover:bg-surface-hover">
-                    <Mic className="w-5 h-5 stroke-[1.5]" />
-                 </button>
-               )}
+               {/* Teal Submit Button */}
+               <button 
+                 onClick={() => handleSearch()}
+                 disabled={!query.trim() && attachments.length === 0}
+                 className={`flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 ml-1 ${(!query.trim() && attachments.length === 0) ? 'bg-surface-hover text-muted cursor-not-allowed' : 'bg-scira-accent text-white hover:opacity-90 shadow-md'}`}
+               >
+                   <ArrowUp className="w-5 h-5" />
+               </button>
             </div>
           </div>
       </div>
     </div>
   );
 
+  // Footer Actions (Help, Theme)
+  const renderFooterControls = () => (
+    <div className="fixed bottom-4 right-4 flex items-center gap-2 z-50">
+        <button 
+          onClick={toggleTheme}
+          className="p-2 rounded-full bg-surface border border-border text-muted hover:text-primary hover:bg-surface-hover transition-all shadow-sm"
+          title="Toggle Theme"
+        >
+          {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+        </button>
+        <button 
+          className="p-2 rounded-full bg-surface border border-border text-muted hover:text-primary hover:bg-surface-hover transition-all shadow-sm"
+          title="Help"
+        >
+          <HelpCircle className="w-4 h-4" />
+        </button>
+    </div>
+  );
+
+  const renderSuggestions = () => (
+    <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
+       <button onClick={() => setHomeViewMode('recommend')} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover transition-colors">
+          <ThumbsUp className="w-3.5 h-3.5" />
+          <span>Recommend</span>
+       </button>
+       <button onClick={() => setHomeViewMode('compare')} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover transition-colors">
+          <Scale className="w-3.5 h-3.5" />
+          <span>Compare</span>
+       </button>
+       <button onClick={() => setQuery('Latest finance news')} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover transition-colors">
+          <DollarSign className="w-3.5 h-3.5" />
+          <span>Finance</span>
+       </button>
+       <button onClick={() => setQuery('Parenting tips')} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover transition-colors">
+          <Baby className="w-3.5 h-3.5" />
+          <span>Parenting</span>
+       </button>
+       <button onClick={() => setQuery('Travel guides')} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover transition-colors">
+          <Plane className="w-3.5 h-3.5" />
+          <span>Travel</span>
+       </button>
+       <button onClick={() => { setHomeViewMode('info'); setQuery('How '); }} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-border text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover transition-colors">
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>Perplexity 101</span>
+       </button>
+    </div>
+  );
+
   return (
-    <div className={`min-h-screen bg-background text-primary font-sans selection:bg-scira-accent/20 flex flex-col ${isMobile ? 'pb-20' : ''}`}>
+    <div className={`min-h-screen bg-background text-primary font-sans selection:bg-scira-accent/20 flex flex-col`}>
       
       {renderHeader(hasSearched)}
 
@@ -782,23 +948,25 @@ export default function App() {
       {view === 'about' && <About onBack={() => setView('home')} />}
 
       {view === 'home' && (
-          <main className="flex-1 w-full max-w-4xl mx-auto px-4 md:px-8 relative flex flex-col min-h-0">
+          <main className="flex-1 w-full mx-auto relative flex flex-col min-h-0 justify-center">
             {!hasSearched ? (
-              <div className="flex-1 flex flex-col items-center justify-center -mt-20">
-                  <div className="mb-8 animate-fade-in-down">
-                    <ImpersioLogo isMobile={isMobile} />
+              <div className="flex flex-col items-center justify-center p-4 w-full">
+                  <div className="mb-8 text-center">
+                    {/* Dynamic Headline Based on Mode */}
+                    {homeViewMode === 'default' && <ImpersioLogo isMobile={isMobile} />}
+                    {homeViewMode === 'summarize' && <h1 className="text-4xl md:text-5xl font-sans font-light text-primary">What do you want to summarize?</h1>}
+                    {homeViewMode === 'compare' && <h1 className="text-4xl md:text-5xl font-sans font-light text-primary">What do you want to compare?</h1>}
+                    {homeViewMode === 'info' && <h1 className="text-4xl md:text-5xl font-sans font-light text-primary">Where knowledge begins</h1>}
+                    {homeViewMode === 'recommend' && <h1 className="text-4xl md:text-5xl font-sans font-light text-primary">What do you want to find?</h1>}
                   </div>
                   
                   {renderInputBar(true)}
                   
-                  <div className="mt-8 flex gap-6 text-sm text-muted font-medium">
-                    <button onClick={() => setView('discover')} className="hover:text-scira-accent transition-colors">Discover</button>
-                    <button onClick={() => setView('about')} className="hover:text-scira-accent transition-colors">About</button>
-                  </div>
+                  {renderSuggestions()}
               </div>
             ) : (
-              <div className="flex-1 flex flex-col pb-48 pt-24 md:pt-32">
-                  <div className="flex flex-col gap-0"> 
+              <div className="flex-1 flex flex-col pb-36 pt-20 px-4">
+                  <div className="flex flex-col gap-6 max-w-4xl mx-auto w-full"> 
                     {messages.map((msg, idx) => (
                         <MessageItem 
                           key={idx}
@@ -806,35 +974,15 @@ export default function App() {
                           isLast={idx === messages.length - 1}
                           isLoading={isLoading}
                           onSearch={handleSearch}
+                          searchStatus={searchStatus}
                         />
                     ))}
-                    
-                    {isLoading && messages[messages.length - 1]?.role === 'user' && (
-                        <div className="w-full max-w-3xl mx-auto flex flex-col gap-4 animate-pulse mt-8">
-                          <div className="flex items-center gap-3 mb-2">
-                              <div className="w-4 h-4 rounded-full bg-scira-accent/20 animate-pulse" />
-                              <div className="text-sm text-muted">Reasoning...</div>
-                          </div>
-                          <div className="space-y-3">
-                              <div className="h-4 w-3/4 bg-surface-hover rounded" />
-                              <div className="h-4 w-1/2 bg-surface-hover rounded" />
-                              <div className="h-4 w-5/6 bg-surface-hover rounded" />
-                          </div>
-                        </div>
-                    )}
-                    
-                    {isSearching && (
-                        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 bg-surface border border-border rounded-full shadow-lg z-30 animate-in slide-in-from-bottom-5 fade-in duration-300">
-                          <Loader2 className="w-4 h-4 animate-spin text-scira-accent" />
-                          <span className="text-sm font-medium text-primary">{searchStatus || "Thinking..."}</span>
-                        </div>
-                    )}
-
                     <div ref={messagesEndRef} />
                   </div>
                   
-                  <div className="fixed bottom-0 left-0 w-full bg-gradient-to-t from-background via-background/95 to-transparent pt-12 pb-6 px-4 z-20 pointer-events-none">
-                     <div className="pointer-events-auto">
+                  {/* Fixed Chat Input */}
+                  <div className="fixed bottom-0 left-0 w-full bg-gradient-to-t from-background via-background/95 to-transparent pt-10 pb-6 px-4 z-20">
+                     <div className="max-w-3xl mx-auto">
                         {renderInputBar(false)}
                      </div>
                   </div>
@@ -842,6 +990,8 @@ export default function App() {
             )}
           </main>
       )}
+
+      {renderFooterControls()}
     </div>
   );
 }

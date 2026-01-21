@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { ImpersioLogo } from '../App';
@@ -19,6 +20,9 @@ export const About: React.FC<AboutProps> = ({ onBack }) => {
             <ArrowLeft className="w-5 h-5" />
             <span className="font-medium">Back</span>
           </button>
+          <div className="opacity-100">
+             <ImpersioLogo compact />
+          </div>
         </div>
       </div>
 

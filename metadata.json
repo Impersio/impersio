@@ -1,6 +1,6 @@
 {
   "name": "Impersio",
-  "description": "Impersio is a free AI-powered search engine.",
+  "description": "Impersio is a minimalist AI search engine.",
   "requestFramePermissions": [
     "microphone"
   ]
