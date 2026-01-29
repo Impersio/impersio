@@ -41,8 +41,8 @@ import {
 const MODEL_OPTIONS: ModelOption[] = [
   { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3', icon: CPUIcon },
   { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', icon: CPUIcon },
-  { id: 'zhipu/glm-4-flash', name: 'GLM 4.7', icon: CPUIcon },
-  { id: 'moonshot/moonshot-v1-8k', name: 'Kimi K1.5', icon: CPUIcon },
+  { id: 'zai-glm-4.7', name: 'GLM 4.7', icon: CPUIcon },
+  { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi K2', icon: CPUIcon },
   { id: 'mixtral-8x7b-32768', name: 'Mixtral', icon: CPUIcon },
 ];
 
@@ -466,7 +466,12 @@ export default function App() {
                      <button className="text-[#888] hover:text-[#E0E0E0] transition-colors" title="Attach">
                          <Plus className="w-5 h-5" strokeWidth={2} />
                      </button>
-                     <button className="text-[#888] hover:text-[#E0E0E0] transition-colors" title="History">
+                     {/* Added onClick to toggle History */}
+                     <button 
+                        className="text-[#888] hover:text-[#E0E0E0] transition-colors" 
+                        title="History"
+                        onClick={() => setIsHistoryOpen(true)}
+                     >
                          <Clock className="w-5 h-5" strokeWidth={2} />
                      </button>
                  </div>
@@ -603,7 +608,7 @@ export default function App() {
                       <div className="max-w-3xl mx-auto">
                           {renderInputBar(false)}
                           <div className="text-center mt-3 text-xs text-[#444]">
-                             Llama 3.3 (Preview) can make mistakes. Please double-check responses.
+                             {selectedModel.name} (Preview) can make mistakes. Please double-check responses.
                           </div>
                       </div>
                     </div>

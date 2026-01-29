@@ -2,6 +2,7 @@
 import { SearchResult } from "../types";
 
 // Access keys from environment variables configured in vite.config.ts
+// Direct access ensures Vite replacement works in browser
 const getTavilyKey = () => process.env.TAVILY_API_KEY || "";
 const getExaKey = () => process.env.EXA_API_KEY || "";
 
@@ -17,7 +18,7 @@ const isVisualIntent = (query: string): boolean => {
   return false;
 };
 
-// Optimized for speed < 1s using Exa
+// Optimized for speed < 2s using Exa
 export const searchFast = async (query: string): Promise<{ results: SearchResult[]; images: string[] }> => {
   const exaKey = getExaKey();
   
@@ -34,7 +35,8 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
         return searchWeb(query, 'fast-visual');
     }
 
-    // Exa AI - Ultra Fast Neural Retrieval
+    // Exa AI - Optimized for Speed
+    // Using 'neural' with fewer results for lower latency
     const response = await fetch("https://api.exa.ai/search", {
       method: "POST",
       headers: {
@@ -43,17 +45,21 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
       },
       body: JSON.stringify({
         query: query,
-        numResults: 6, 
+        numResults: 5, // Reduced from 10 to 5 for speed
         type: "neural", 
         useAutoprompt: true, 
         contents: {
           text: true,
-          highlights: true 
+          highlights: {
+              numSentences: 2, // Only fetch what we need
+              query: query
+          }
         }
       }),
     });
 
     if (!response.ok) {
+       console.warn("Exa API failed, falling back to Tavily");
        return searchWeb(query, 'fast-fallback');
     }
 
@@ -63,7 +69,8 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
         let hostname = 'Source';
         try { hostname = new URL(item.url).hostname; } catch (e) {}
         
-        const snippet = item.highlights?.[0] || item.text?.substring(0, 300) || "";
+        // Prefer highlights, fall back to text, truncate to keep payload light
+        const snippet = item.highlights?.[0] || item.text?.substring(0, 250) || "";
 
         return {
             title: item.title || hostname,
@@ -77,6 +84,7 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
     return { results, images: [] };
 
   } catch (error) {
+    console.warn("Exa Search Error:", error);
     return searchWeb(query, 'fast-fallback');
   }
 };
@@ -94,7 +102,7 @@ export const searchWeb = async (query: string, mode: string = 'web'): Promise<{ 
     let topic = "general";
     let searchDepth = "basic"; 
     let includeImages = true;
-    let maxResults = 10; 
+    let maxResults = 8; 
 
     if (mode === 'x') {
       includeDomains = ['twitter.com', 'x.com'];
@@ -104,13 +112,13 @@ export const searchWeb = async (query: string, mode: string = 'web'): Promise<{ 
        includeDomains = ['youtube.com', 'vimeo.com'];
     } else if (mode === 'research') {
       searchDepth = "advanced";
-      maxResults = 15;
+      maxResults = 12;
     } else if (mode === 'fast-visual') {
-        maxResults = 10;
+        maxResults = 8;
         includeImages = true;
     } else if (mode === 'fast-fallback') {
         includeImages = false; 
-        maxResults = 5;
+        maxResults = 4;
         searchDepth = "basic";
     }
 

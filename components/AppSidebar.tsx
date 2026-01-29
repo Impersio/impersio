@@ -26,8 +26,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onSignIn,
   user
 }) => {
+  // Added 'hidden md:flex' to hide on mobile
   return (
-    <aside className="w-[50px] h-screen bg-sidebar border-r border-border flex flex-col items-center py-4 fixed left-0 top-0 z-50">
+    <aside className="hidden md:flex w-[50px] h-screen bg-sidebar border-r border-border flex-col items-center py-4 fixed left-0 top-0 z-50">
        
        {/* Top Actions */}
        <div className="flex flex-col gap-2 mb-4">

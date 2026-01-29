@@ -1,6 +1,12 @@
 
-// Access key from environment variable
-const getOpenRouterKey = () => process.env.OPENROUTER_API_KEY || "";
+// Use environment variable for key, do not hardcode.
+const getOpenRouterKey = () => {
+    // Vite 'define' replaces process.env.OPENROUTER_API_KEY with the actual string value during build.
+    // We must access it directly without checking 'typeof process'.
+    const key = process.env.OPENROUTER_API_KEY;
+    if (key && key.length > 0) return key;
+    return undefined;
+};
 
 export const streamOpenRouter = async (
   messages: any[],

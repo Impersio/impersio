@@ -4,6 +4,7 @@ import { SearchResult, WidgetData, Message, ProSearchStep } from "../types";
 import { searchFast } from './googleSearchService';
 import { streamGroq } from './groqService';
 import { streamOpenRouter } from './openRouterService';
+import { streamCerebras } from './cerebrasService';
 
 // Safe access to environment variable following guidelines
 const getApiKey = () => {
@@ -260,9 +261,73 @@ export const streamResponse = async (
   `;
 
   // --- ROUTING LOGIC ---
-  
-  // 1. Kimi, GLM, Moonshot -> OpenRouter directly
+
+  // 1. Cerebras Routing (GLM 4.7)
+  if (modelName === 'zai-glm-4.7') {
+      try {
+          // Cerebras expects {role, content} format
+          const messages = [{ role: 'user', content: fullPrompt }];
+          let fullText = "";
+          await streamCerebras(messages as any, modelName, (chunk) => {
+              fullText += chunk;
+              onChunk(fullText);
+          });
+          if (onComplete) onComplete(fullText, undefined, []);
+          return;
+      } catch (err: any) {
+           console.error("Cerebras Error:", err);
+           onChunk(`⚠️ Error with Cerebras: ${err.message}`);
+           return;
+      }
+  }
+
+  // 2. GROQ Routing (Llama, Mixtral, Kimi K2)
+  if (modelName.includes('llama') || modelName.includes('mixtral') || modelName.includes('kimi-k2')) {
+      try {
+          // Construct Groq messages
+          const messages = [{ role: 'user', content: fullPrompt }];
+          let fullText = "";
+          await streamGroq(messages, modelName, (chunk) => {
+              fullText += chunk;
+              onChunk(fullText);
+          });
+          
+          if (onComplete) onComplete(fullText, undefined, []);
+          return;
+      } catch (err: any) {
+          console.warn("Groq API failed:", err.message);
+          
+          // Fallback to OpenRouter ONLY for Llama 3.3 as requested
+          if (modelName.includes('llama')) {
+              try {
+                 onChunk("\n\n*Switching to backup provider...*\n\n");
+                 const messages = [{ role: 'user', content: fullPrompt }];
+                 let fullText = "";
+                 const fallbackModel = "meta-llama/llama-3.3-70b-instruct:free";
+                 
+                 await streamOpenRouter(messages, fallbackModel, (chunk) => {
+                    fullText += chunk;
+                    onChunk(fullText);
+                 });
+                 
+                 if (onComplete) onComplete(fullText, undefined, []);
+                 return;
+    
+              } catch (fallbackErr: any) {
+                 console.error("OpenRouter Fallback failed:", fallbackErr);
+                 onChunk(`⚠️ All providers failed. Groq: ${err.message}. OpenRouter: ${fallbackErr.message}`);
+                 return;
+              }
+          }
+          
+          onChunk(`⚠️ Groq Error: ${err.message}`);
+          return;
+      }
+  }
+
+  // 3. OpenRouter Direct Routing (Legacy or other models)
   if (modelName.includes('zhipu') || modelName.includes('moonshot') || modelName.includes('glm')) {
+      // Note: Kimi K2 and GLM 4.7 are handled above. This catches older/other IDs if any.
       try {
           const messages = [{ role: 'user', content: fullPrompt }];
           let fullText = "";
@@ -279,47 +344,7 @@ export const streamResponse = async (
       }
   }
 
-  // 2. GROQ Routing (Llama models) with OpenRouter Fallback
-  if (modelName.includes('llama') || modelName.includes('mixtral')) {
-      try {
-          // Construct Groq messages
-          const messages = [{ role: 'user', content: fullPrompt }];
-          let fullText = "";
-          await streamGroq(messages, modelName, (chunk) => {
-              fullText += chunk;
-              onChunk(fullText);
-          });
-          
-          if (onComplete) onComplete(fullText, undefined, []);
-          return;
-      } catch (err: any) {
-          console.warn("Groq API failed, attempting OpenRouter fallback:", err.message);
-          
-          // Fallback to OpenRouter Llama 3.3
-          try {
-             onChunk("\n\n*Switching to backup provider...*\n\n");
-             const messages = [{ role: 'user', content: fullPrompt }];
-             let fullText = "";
-             // Use the free Llama 3.3 endpoint on OpenRouter as requested
-             const fallbackModel = "meta-llama/llama-3.3-70b-instruct:free";
-             
-             await streamOpenRouter(messages, fallbackModel, (chunk) => {
-                fullText += chunk;
-                onChunk(fullText);
-             });
-             
-             if (onComplete) onComplete(fullText, undefined, []);
-             return;
-
-          } catch (fallbackErr: any) {
-             console.error("OpenRouter Fallback failed:", fallbackErr);
-             onChunk(`⚠️ All providers failed. Groq: ${err.message}. OpenRouter: ${fallbackErr.message}`);
-             return;
-          }
-      }
-  }
-
-  // 3. GEMINI Routing (Default)
+  // 4. GEMINI Routing (Default)
   const apiKey = getApiKey();
   if (!apiKey || apiKey === "dummy_key_for_init") {
       onChunk("⚠️ **Configuration Error**: Google API Key is missing.\n\nPlease add `GOOGLE_API_KEY` to your environment variables.");
