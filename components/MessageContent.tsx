@@ -42,8 +42,13 @@ const CitationPill = ({ source, label }: { source: SearchResult; label: string }
     <span className="relative inline-block ml-1 align-baseline">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`citation-pill select-none ${isOpen ? 'bg-primary text-background ring-1 ring-primary' : ''}`}
+        className={`citation-pill select-none inline-flex items-center justify-center h-5 px-2 text-[10px] font-bold rounded-full align-middle ml-0.5 cursor-pointer transition-all border
+        ${isOpen 
+            ? 'bg-primary text-background border-primary' 
+            : 'bg-[#DA7756]/10 text-[#DA7756] border-[#DA7756]/20 hover:bg-[#DA7756]/20'
+        }`}
         type="button"
+        title={source.title}
       >
         {label}
       </button>
@@ -185,7 +190,7 @@ export const MessageContent = memo(({ content, isStreaming, sources = [] }: Mess
                  } catch(e) {}
 
                  const count = indices.length;
-                 const label = count > 1 ? `${domain} +${count - 1}` : domain;
+                 const label = count > 1 ? `${count} sources` : `${domain}`;
 
                  return (
                     <React.Fragment key={i}>
@@ -214,8 +219,11 @@ export const MessageContent = memo(({ content, isStreaming, sources = [] }: Mess
                     </p>
                 );
             },
+            ul: ({node, ...props}: any) => <ul className="list-none space-y-2 mb-6" {...props} />,
+            ol: ({node, ...props}: any) => <ol className="list-decimal list-outside space-y-2 mb-6 ml-4" {...props} />,
             li: ({node, children, ...props}: any) => (
-                <li className="mb-2 text-[16px] md:text-[17px] leading-8 pl-1 font-sans text-primary/90" {...props}>
+                <li className="text-[16px] md:text-[17px] leading-8 pl-4 font-sans text-primary/90 relative" {...props}>
+                   <span className="absolute left-0 top-[0.7em] w-1.5 h-1.5 bg-muted rounded-full opacity-60"></span>
                    {React.Children.map(children, child => {
                        if (typeof child === 'string') return renderTextWithCitations(child);
                        return child;
@@ -224,9 +232,21 @@ export const MessageContent = memo(({ content, isStreaming, sources = [] }: Mess
             ),
             h1: ({node, ...props}: any) => <h1 className="text-3xl font-serif font-normal text-primary mt-8 mb-4 border-b border-border/50 pb-2" {...props} />,
             h2: ({node, ...props}: any) => <h2 className="text-2xl font-serif font-normal text-primary mt-8 mb-4" {...props} />,
-            h3: ({node, ...props}: any) => <h3 className="text-xl font-serif font-normal text-primary mt-6 mb-3 text-scira-accent" {...props} />,
+            h3: ({node, ...props}: any) => <h3 className="text-lg font-sans font-semibold text-primary mt-6 mb-3 flex items-center gap-2 border-b border-border/30 pb-2" {...props} />,
             strong: ({node, ...props}: any) => <strong className="font-semibold text-primary" {...props} />,
-            blockquote: ({node, ...props}: any) => <blockquote className="border-l-2 border-scira-accent pl-4 italic text-muted my-4 font-serif text-lg" {...props} />
+            blockquote: ({node, ...props}: any) => <blockquote className="border-l-2 border-scira-accent pl-4 italic text-muted my-4 font-serif text-lg bg-surface/50 py-2 rounded-r-lg" {...props} />,
+            code: ({node, inline, className, children, ...props}: any) => {
+                if (inline) {
+                    return <code className="bg-surface-hover text-primary px-1.5 py-0.5 rounded text-sm font-mono" {...props}>{children}</code>;
+                }
+                return (
+                    <div className="bg-[#1E1E1E] rounded-xl p-4 my-4 overflow-x-auto border border-border/20 shadow-sm">
+                        <code className="text-gray-200 text-sm font-mono leading-relaxed" {...props}>
+                            {children}
+                        </code>
+                    </div>
+                );
+            }
         }}
       >
         {displayedContent}

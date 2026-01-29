@@ -242,9 +242,10 @@ export const streamResponse = async (
   const strictFormatInstructions = `
   FORMATTING RULES (STRICT):
   1. **Structure**: Start directly with the answer. Use ### Headers for sections.
-  2. **Citations**: You MUST use inline citations like [1], [2] when referencing the provided context.
+  2. **Citations**: You MUST use inline citations like [1], [2]. **IMPORTANT**: Place citations at the END of sentences or paragraphs. DO NOT place them in the middle of sentences or text flows.
   3. **Tone**: Objective, professional, yet conversational.
   4. **Date**: Today is ${currentDateTime}.
+  5. **Formatting**: Use strict bullet points for lists. Ensure H3 headers are used for sub-sections.
   `;
 
   const fullPrompt = `
