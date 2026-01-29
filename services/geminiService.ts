@@ -448,45 +448,46 @@ export const streamResponse = async (
     // AUTO MODE ROUTING
     let activeModelName = modelName;
     if (activeModelName === 'auto') {
-        // No status message sent to onChunk, keeping UI clean (showing logo/loader)
         const complexity = await classifyComplexity(prompt);
         
         let primaryModel = '';
         let fallbackModel = '';
 
         if (complexity === 'HARD' || complexity === 'RESEARCH') {
-            // Hard/Research: Use GLM 4.7 (Cerebras) or Gemini 3
             primaryModel = 'zai-glm-4.7';
             fallbackModel = 'gemini-3-flash-preview'; 
         } else if (complexity === 'MEDIUM') {
-            // Medium: Use Moonshot Kimi (Groq) or Llama 4
             primaryModel = 'moonshot-v1';
             fallbackModel = 'llama-4-scout';
         } else {
-            // Normal: Use Llama 4 (Groq) or Gemini Flash
             primaryModel = 'llama-4-scout';
             fallbackModel = 'gemini-2.0-flash';
         }
 
-        // Try Primary
         try {
             await invokeModelStream(primaryModel, prompt, cleanHistory, systemInstruction, processChunk);
             finishStream();
             return;
         } catch (e) {
             console.warn(`Primary model ${primaryModel} failed, falling back to ${fallbackModel}`, e);
-            // No error message sent to UI, just silently switch to fallback
             activeModelName = fallbackModel; 
         }
     }
 
-    // Direct Execution (or Fallback execution)
+    // Direct Execution with Fallback
     try {
         await invokeModelStream(activeModelName, prompt, cleanHistory, systemInstruction, processChunk);
         finishStream();
     } catch (e: any) {
-        console.error("Model execution failed", e);
-        onChunk(`\n\nError: ${e.message || "Failed to generate response."}`);
+        console.warn(`Model ${activeModelName} failed. Attempting fallback to Gemini 2.0 Flash.`, e);
+        try {
+            // Fallback to Gemini 2.0 Flash if any specific model fails (e.g. Groq network error)
+            await invokeModelStream('gemini-2.0-flash', prompt, cleanHistory, systemInstruction, processChunk);
+            finishStream();
+        } catch (fallbackError: any) {
+            console.error("All model attempts failed", fallbackError);
+            onChunk(`\n\nError: ${fallbackError.message || "Failed to generate response."}`);
+        }
     }
 
   } catch (error: any) {
