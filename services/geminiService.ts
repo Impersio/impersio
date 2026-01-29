@@ -3,25 +3,26 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { SearchResult, WidgetData, Message, ProSearchStep } from "../types";
 import { searchFast } from './googleSearchService';
 
-// Robust API Key Retrieval
+// Safe access to environment variable following guidelines
 const getApiKey = () => {
-    // 1. Check process.env (injected by Vite define)
-    if (typeof process !== 'undefined' && process.env) {
-        if (process.env.API_KEY) return process.env.API_KEY;
-        if (process.env.GOOGLE_API_KEY) return process.env.GOOGLE_API_KEY;
+    // 1. Try process.env (replaced by Vite define)
+    if (typeof process !== 'undefined' && process.env.API_KEY) {
+        return process.env.API_KEY;
     }
-    // 2. Fallback to import.meta.env (standard Vite)
+    // 2. Try import.meta.env (Vite native fallback)
     if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
-        if ((import.meta as any).env.VITE_API_KEY) return (import.meta as any).env.VITE_API_KEY;
-        if ((import.meta as any).env.VITE_GOOGLE_API_KEY) return (import.meta as any).env.VITE_GOOGLE_API_KEY;
-        if ((import.meta as any).env.GOOGLE_API_KEY) return (import.meta as any).env.GOOGLE_API_KEY;
+        const env = (import.meta as any).env;
+        return env.VITE_API_KEY || env.GOOGLE_API_KEY || env.VITE_GOOGLE_API_KEY || env.API_KEY;
     }
     return undefined;
 };
 
-// Initialize with a safe fallback to prevent crash on load, but requests will fail if key is invalid
+// Initialize with a dummy key if missing to prevent immediate crash.
+// The actual calls will check for validity or fail gracefully with a user-friendly message.
 const getAiClient = () => {
     const key = getApiKey();
+    // If no key is found, use a placeholder. This will cause a 400 error from Google
+    // which we catch in streamResponse to show a "Missing API Key" message.
     return new GoogleGenAI({ apiKey: key || "dummy_key_for_init" });
 };
 
@@ -34,7 +35,7 @@ export const shouldSearch = async (query: string): Promise<boolean> => {
     
     try {
         const key = getApiKey();
-        if (!key) return true; 
+        if (!key) return true; // Default to search if no AI key for classification
         
         const ai = getAiClient();
         const response = await ai.models.generateContent({
@@ -204,6 +205,17 @@ export const generateManualQueries = (prompt: string): string[] => {
     return [base, `${base} latest news`, `${base} analysis`, `${base} key details`];
 };
 
+export const getSuggestions = async (query: string): Promise<string[]> => {
+  if (!query || query.trim().length < 2) return [];
+  try {
+    const response = await fetch(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=5&origin=*&format=json`);
+    const data = await response.json();
+    return data[1] || [];
+  } catch (error) {
+    return [];
+  }
+};
+
 export const streamResponse = async (
   prompt: string, 
   modelName: string, 
@@ -219,8 +231,8 @@ export const streamResponse = async (
 ): Promise<void> => {
   const apiKey = getApiKey();
   
-  if (!apiKey) {
-      onChunk("⚠️ **Configuration Error**: API Key is missing.\n\nPlease add `GOOGLE_API_KEY` to your environment variables.");
+  if (!apiKey || apiKey === "dummy_key_for_init") {
+      onChunk("⚠️ **Configuration Error**: API Key is missing.\n\nPlease add `GOOGLE_API_KEY` to your environment variables in your deployment settings (e.g., Vercel, Netlify) or `.env` file.");
       return;
   }
 
@@ -248,7 +260,7 @@ export const streamResponse = async (
 
     const fullPrompt = `
     System Prompt:
-    You are Scira, a minimalist AI search engine designed for clarity and truth.
+    You are Impersio, a high-intelligence search assistant.
     ${strictFormatInstructions}
     
     Context from Search:
@@ -259,9 +271,12 @@ export const streamResponse = async (
     Answer:
     `;
 
+    // Construct request contents
     let contentsParts: any[] = [{ text: fullPrompt }];
     
+    // Handle attachments (images)
     if (attachments && attachments.length > 0) {
+        // Assuming attachments are base64 data URLs
         const imageParts = attachments.map(att => {
             const base64Data = att.split(',')[1];
             const mimeType = att.substring(att.indexOf(':') + 1, att.indexOf(';'));
@@ -276,20 +291,20 @@ export const streamResponse = async (
     }
 
     const result = await ai.models.generateContentStream({
-        model: modelName.includes('gemini') ? modelName : 'gemini-2.0-flash',
+        model: modelName.includes('gemini') ? modelName : 'gemini-2.0-flash', // Fallback to gemini if custom model ID
         contents: [
             { role: 'user', parts: contentsParts }
         ],
         config: {
             temperature: 0.7,
-            maxOutputTokens: 4000,
+            maxOutputTokens: 2000,
         }
     });
 
     let fullText = "";
     
     for await (const chunk of result) {
-        const text = chunk.text;
+        const text = chunk.text; // Use property access, not method call
         if (text) {
             fullText += text;
             onChunk(fullText);
@@ -304,6 +319,7 @@ export const streamResponse = async (
        if (lowerPrompt.includes('weather') && !lowerPrompt.includes('explain')) {
            widget = { type: 'weather', data: { location: prompt.replace('weather', '').trim() || 'New York' } };
        } else if (lowerPrompt.includes('stock') || lowerPrompt.includes('price of')) {
+           // Simple heuristic extraction for stocks
            const symbol = prompt.split(' ').pop()?.toUpperCase() || 'AAPL';
            widget = { type: 'stock', data: { symbol } };
        } else if (lowerPrompt.includes('time in')) {
@@ -319,11 +335,12 @@ export const streamResponse = async (
            onWidget(widget);
        }
 
+       // Generate related questions (simple logic or separate call)
        if (fullText.length > 100) {
             onRelated([
                 `More about ${prompt}`,
-                `Latest news`,
-                `Deep dive analysis`
+                `Latest news on this`,
+                `Explain the details`
             ]);
        }
        
@@ -336,11 +353,24 @@ export const streamResponse = async (
   } catch (e: any) {
     console.error("Gemini API Error:", e);
     
-    let userMessage = `I encountered an error: ${e.message || "Unknown error"}`;
+    let errorMsg = e.message || "";
+    // Attempt to extract message from JSON error if possible
+    if (errorMsg.includes('{')) {
+        try {
+            // Find JSON part
+            const match = errorMsg.match(/\{.*\}/s);
+            if (match) {
+                const json = JSON.parse(match[0]);
+                if (json.error?.message) errorMsg = json.error.message;
+            }
+        } catch {}
+    }
+
+    let userMessage = `I encountered an error: ${errorMsg}`;
     
-    if (e.message?.includes("API_KEY_INVALID") || e.message?.includes("API key not valid")) {
-        userMessage = "⚠️ **Access Denied**: The API Key provided is invalid.\n\nPlease check your Environment Variables and ensure `GOOGLE_API_KEY` is set correctly.";
-    } else if (e.message?.includes("429")) {
+    if (errorMsg.includes("API_KEY_INVALID") || errorMsg.includes("API key not valid")) {
+        userMessage = "⚠️ **Access Denied**: The API Key provided is invalid or missing.\n\nPlease check your deployment settings (Environment Variables) and ensure `GOOGLE_API_KEY` is set correctly.";
+    } else if (errorMsg.includes("429")) {
         userMessage = "⚠️ **Rate Limit Exceeded**: We're receiving too many requests. Please try again in a moment.";
     }
 
