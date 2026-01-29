@@ -230,9 +230,9 @@ export const MessageContent = memo(({ content, isStreaming, sources = [] }: Mess
                    })}
                 </li>
             ),
-            h1: ({node, ...props}: any) => <h1 className="text-3xl font-serif font-normal text-primary mt-8 mb-4 border-b border-border/50 pb-2" {...props} />,
+            h1: ({node, ...props}: any) => <h1 className="text-3xl font-serif font-normal text-primary mt-8 mb-4" {...props} />,
             h2: ({node, ...props}: any) => <h2 className="text-2xl font-serif font-normal text-primary mt-8 mb-4" {...props} />,
-            h3: ({node, ...props}: any) => <h3 className="text-lg font-sans font-semibold text-primary mt-6 mb-3 flex items-center gap-2 border-b border-border/30 pb-2" {...props} />,
+            h3: ({node, ...props}: any) => <h3 className="text-lg font-sans font-semibold text-primary mt-6 mb-3 flex items-center gap-2" {...props} />,
             strong: ({node, ...props}: any) => <strong className="font-semibold text-primary" {...props} />,
             blockquote: ({node, ...props}: any) => <blockquote className="border-l-2 border-scira-accent pl-4 italic text-muted my-4 font-serif text-lg bg-surface/50 py-2 rounded-r-lg" {...props} />,
             code: ({node, inline, className, children, ...props}: any) => {
