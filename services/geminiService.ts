@@ -6,31 +6,34 @@ import { streamCerebras, CerebrasMessage } from './cerebrasService';
 import { streamOpenRouter } from './openRouterService';
 import { streamGroq } from './groqService';
 
-// Safe access to environment variable to prevent "process is not defined" crashes in browser
+// Safe access to environment variable
 const getApiKey = () => {
     try {
         if (typeof process !== 'undefined' && process.env) {
             return process.env.API_KEY;
         }
-    } catch (e) {
-        // Ignore errors if process is not available
-    }
+    } catch (e) {}
     return undefined;
 };
 
-// Lazily initialize to avoid top-level failures if API_KEY is missing
-const getAiClient = () => new GoogleGenAI({ apiKey: getApiKey() || "dummy_key" });
+// Initialize with a dummy key if missing to prevent immediate crash, 
+// actual calls will check for validity or fail gracefully.
+const getAiClient = () => {
+    const key = getApiKey();
+    return new GoogleGenAI({ apiKey: key || "dummy_key_for_init" });
+};
 
 // --- Search Router ---
 
 export const shouldSearch = async (query: string): Promise<boolean> => {
-    // Quick local checks for obvious cases
     const lower = query.toLowerCase().trim();
     if (lower.length < 5) return false;
     if (['hi', 'hello', 'hey', 'help', 'who are you', 'what is this', 'good morning', 'good evening'].includes(lower)) return false;
     
-    // LLM Check (Fast Model)
     try {
+        const key = getApiKey();
+        if (!key) return true; // Default to search if no AI key for classification
+        
         const ai = getAiClient();
         const response = await ai.models.generateContent({
             model: 'gemini-2.0-flash',
@@ -52,9 +55,9 @@ export const shouldSearch = async (query: string): Promise<boolean> => {
             }
         });
         const result = JSON.parse(response.text || "{}");
-        return result.search ?? true; // Default to true if unsure
+        return result.search ?? true;
     } catch(e) {
-        return true; // Default to search on error to be safe
+        return true;
     }
 };
 
@@ -115,7 +118,6 @@ const generatePlan = async (query: string): Promise<string[]> => {
         if (!text) return ["Analyze the query"];
         return JSON.parse(text);
     } catch (e) {
-        console.error("Plan generation failed", e);
         return ["Research the topic"];
     }
 };
@@ -157,7 +159,6 @@ export const orchestrateProSearch = async (
     const steps: ProSearchStep[] = [];
     const allSources: SearchResult[] = [];
 
-    // 1. Plan
     const plan = await generatePlan(query);
     plan.forEach((title, idx) => {
         steps.push({
@@ -168,20 +169,17 @@ export const orchestrateProSearch = async (
             sources: []
         });
     });
-    // Add a final wrapping up step if not present
     if (!plan.some(p => p.toLowerCase().includes('wrap') || p.toLowerCase().includes('summary'))) {
         steps.push({ id: 'step-final', title: 'Wrapping up', status: 'pending', queries: [], sources: [] });
     }
     
     onStepsUpdate([...steps]);
 
-    // 2. Execute Loop
     for (let i = 0; i < steps.length; i++) {
-        // Skip final wrapper for actual searching usually, unless plan was short
         if (steps[i].title === 'Wrapping up' && i === steps.length - 1) {
              steps[i].status = 'in-progress';
              onStepsUpdate([...steps]);
-             await new Promise(r => setTimeout(r, 600)); // Visual pause
+             await new Promise(r => setTimeout(r, 600)); 
              steps[i].status = 'completed';
              onStepsUpdate([...steps]);
              continue;
@@ -190,13 +188,10 @@ export const orchestrateProSearch = async (
         steps[i].status = 'in-progress';
         onStepsUpdate([...steps]);
 
-        // Generate Queries
         const queries = await generateQueriesForStep(steps[i].title, query);
         steps[i].queries = queries;
         onStepsUpdate([...steps]);
 
-        // Execute Search (Parallel)
-        // We limit to 2 queries per step to be fast
         const searchPromises = queries.slice(0, 2).map(q => searchFast(q));
         const results = await Promise.all(searchPromises);
         
@@ -205,7 +200,6 @@ export const orchestrateProSearch = async (
             if (r.results) stepSources.push(...r.results);
         });
 
-        // Deduplicate
         const uniqueSources = stepSources.filter((s, index, self) => 
             index === self.findIndex((t) => (t.link === s.link))
         );
@@ -217,22 +211,18 @@ export const orchestrateProSearch = async (
         onStepsUpdate([...steps]);
     }
 
-    // 3. Final Answer
-    // We reuse the streamResponse logic with isReasoningEnabled = true to trigger Deep Research mode
     await streamResponse(
         query,
         modelId,
         history,
         allSources,
-        [], // no attachments for now
-        true, // Enable Deep Research / Pro Search mode
-        false, // isMobile
-        (chunk) => onComplete(chunk, allSources), // Using partial updates as "Complete" for streaming effect
-        () => {}, // widget
-        () => {}, // related
-        (full, widget, related) => {
-            // Final callback if needed
-        }
+        [], 
+        true, 
+        false, 
+        (chunk) => onComplete(chunk, allSources),
+        () => {}, 
+        () => {}, 
+        (full, widget, related) => {}
     );
 };
 
@@ -240,12 +230,7 @@ export const orchestrateProSearch = async (
 
 export const generateManualQueries = (prompt: string): string[] => {
     const base = prompt.trim();
-    return [
-        base,                                      
-        `${base} latest news`,            
-        `${base} analysis`,   
-        `${base} key details`      
-    ];
+    return [base, `${base} latest news`, `${base} analysis`, `${base} key details`];
 };
 
 export const rewriteQuery = async (currentQuery: string, history: Message[]): Promise<string> => {
@@ -253,7 +238,7 @@ export const rewriteQuery = async (currentQuery: string, history: Message[]): Pr
     try {
         const ai = getAiClient();
         const recentHistory = history.slice(-2)
-            .filter(m => m && m.role && m.content) // Safety check for invalid history items
+            .filter(m => m && m.role && m.content)
             .map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
             
         const response = await ai.models.generateContent({
@@ -304,24 +289,16 @@ export const streamResponse = async (
 ): Promise<void> => {
   try {
     const now = new Date();
-    // Use a robust date format with time to prevent hallucinations
     const currentDateTime = now.toLocaleString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit',
-        timeZoneName: 'short' 
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', 
+        hour: '2-digit', minute: '2-digit', timeZoneName: 'short' 
     });
     const hasResults = searchResults.length > 0;
 
-    // RAG: Format context for the model
     const ragContext = hasResults 
         ? searchResults.map((r, i) => `CITATION [${i+1}] ${r.title}\nURL: ${r.link}\nCONTENT: ${r.snippet}`).join('\n\n')
         : "No external context provided. Rely on internal knowledge.";
 
-    // STRUCTURE INSTRUCTIONS - MEDIUM LENGTH (250-500 Words)
     const strictFormatInstructions = `
     FORMATTING RULES (STRICT - MEDIUM LENGTH):
     1. **Length Guidelines**: 
@@ -390,7 +367,6 @@ export const streamResponse = async (
     const processChunk = (text: string) => {
       fullStreamText += text;
       
-      // Widget Logic
       if (!widgetParsed && fullStreamText.includes("///") && fullStreamText.indexOf("///", fullStreamText.indexOf("///") + 3) !== -1) {
          const start = fullStreamText.indexOf("///");
          const end = fullStreamText.indexOf("///", start + 3);
@@ -412,7 +388,6 @@ export const streamResponse = async (
          }
       }
 
-      // Related Questions Logic
       if (!relatedParsed && fullStreamText.includes("///RELATED:")) {
           const start = fullStreamText.indexOf("///RELATED:");
           const end = fullStreamText.indexOf("///", start + 11);
@@ -427,7 +402,6 @@ export const streamResponse = async (
           }
       }
 
-      // Clean Output
       let cleanText = fullStreamText;
       if (widgetParsed) cleanText = cleanText.replace(/\/\/\/.*?\/\/\//s, "").trimStart();
       if (relatedParsed) cleanText = cleanText.substring(0, cleanText.indexOf("///RELATED:")).trimEnd();
@@ -445,57 +419,38 @@ export const streamResponse = async (
 
     const cleanHistory = history.filter(m => m.content && m.content.trim().length > 0);
 
-    // AUTO MODE ROUTING
     let activeModelName = modelName;
     if (activeModelName === 'auto') {
         const complexity = await classifyComplexity(prompt);
-        
-        let primaryModel = '';
-        let fallbackModel = '';
-
+        // Default to Groq models for simple tasks if keys exist, else Gemini
         if (complexity === 'HARD' || complexity === 'RESEARCH') {
-            primaryModel = 'zai-glm-4.7';
-            fallbackModel = 'gemini-3-flash-preview'; 
-        } else if (complexity === 'MEDIUM') {
-            primaryModel = 'moonshot-v1';
-            fallbackModel = 'llama-4-scout';
+            activeModelName = 'gemini-3-flash-preview'; 
         } else {
-            primaryModel = 'llama-4-scout';
-            fallbackModel = 'gemini-2.0-flash';
-        }
-
-        try {
-            await invokeModelStream(primaryModel, prompt, cleanHistory, systemInstruction, processChunk);
-            finishStream();
-            return;
-        } catch (e) {
-            console.warn(`Primary model ${primaryModel} failed, falling back to ${fallbackModel}`, e);
-            activeModelName = fallbackModel; 
+            activeModelName = 'llama-4-scout';
         }
     }
 
-    // Direct Execution with Fallback
+    // Attempt Execution with robust Fallback
     try {
         await invokeModelStream(activeModelName, prompt, cleanHistory, systemInstruction, processChunk);
         finishStream();
     } catch (e: any) {
-        console.warn(`Model ${activeModelName} failed. Attempting fallback to Gemini 2.0 Flash.`, e);
+        console.warn(`Primary Model ${activeModelName} failed. Falling back to Gemini.`, e);
         try {
-            // Fallback to Gemini 2.0 Flash if any specific model fails (e.g. Groq network error)
+            // Fallback to Gemini 2.0 Flash
             await invokeModelStream('gemini-2.0-flash', prompt, cleanHistory, systemInstruction, processChunk);
             finishStream();
         } catch (fallbackError: any) {
-            console.error("All model attempts failed", fallbackError);
-            onChunk(`\n\nError: ${fallbackError.message || "Failed to generate response."}`);
+            console.error("Fallback failed", fallbackError);
+            onChunk(`\n\nI encountered an issue generating the response. Please check your internet connection or try again later. (Error: ${fallbackError.message})`);
         }
     }
 
   } catch (error: any) {
-    onChunk("Error: " + error.message);
+    onChunk("System Error: " + error.message);
   }
 };
 
-// Helper function to invoke specific model logic
 const invokeModelStream = async (
     modelId: string, 
     prompt: string, 
@@ -504,56 +459,40 @@ const invokeModelStream = async (
     onChunk: (text: string) => void
 ) => {
 
-    // GLM 4.7 (Cerebras)
     if (modelId === 'zai-glm-4.7') {
       const messages: CerebrasMessage[] = [
         { role: 'system', content: systemInstruction },
-        ...history.map(m => ({
-          role: m.role === 'assistant' ? 'assistant' : 'user',
-          content: m.content
-        } as CerebrasMessage)),
+        ...history.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content } as CerebrasMessage)),
         { role: 'user', content: prompt }
       ];
       await streamCerebras(messages, 'zai-glm-4.7', onChunk);
       return;
     }
 
-    // DeepSeek R1 (OpenRouter)
     if (modelId === 'deepseek-r1') {
       const messages = [
         { role: 'system', content: systemInstruction },
-        ...history.map(m => ({
-          role: m.role === 'assistant' ? 'assistant' : 'user',
-          content: m.content
-        })),
+        ...history.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
         { role: 'user', content: prompt }
       ];
       await streamOpenRouter(messages, 'deepseek/deepseek-r1:free', onChunk);
       return;
     }
 
-    // Moonshot Kimi (Groq)
     if (modelId === 'moonshot-v1') {
       const messages = [
         { role: 'system', content: systemInstruction },
-        ...history.map(m => ({
-          role: m.role === 'assistant' ? 'assistant' : 'user',
-          content: m.content
-        })),
+        ...history.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
         { role: 'user', content: prompt }
       ];
       await streamGroq(messages, 'moonshotai/kimi-k2-instruct-0905', onChunk);
       return;
     }
 
-    // Llama 4 Scout (Groq)
     if (modelId === 'llama-4-scout') {
       const messages = [
         { role: 'system', content: systemInstruction },
-        ...history.map(m => ({
-          role: m.role === 'assistant' ? 'assistant' : 'user',
-          content: m.content
-        })),
+        ...history.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
         { role: 'user', content: prompt }
       ];
       await streamGroq(messages, 'meta-llama/llama-4-scout-17b-16e-instruct', onChunk);
@@ -570,7 +509,7 @@ const invokeModelStream = async (
         { role: 'user', parts: [{ text: prompt }] }
     ];
     
-    // Fallback to Flash if preview not available or error occurs
+    // Normalize model name for Gemini
     const targetModel = modelId.includes('gemini') ? modelId : 'gemini-2.0-flash';
     
     const result = await ai.models.generateContentStream({

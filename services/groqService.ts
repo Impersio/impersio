@@ -1,16 +1,31 @@
 
-const GROQ_API_KEY = "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";
+// Use environment variable for key, do not hardcode.
+// If missing, this service will fail gracefully and trigger the Gemini fallback.
+const getGroqApiKey = () => {
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env.GROQ_API_KEY;
+    }
+  } catch (e) {}
+  return undefined;
+};
 
 export const streamGroq = async (
   messages: any[],
   modelId: string,
   onChunk: (text: string) => void
 ) => {
+  const apiKey = getGroqApiKey();
+  
+  if (!apiKey) {
+    throw new Error("Groq API Key not configured. Triggering fallback.");
+  }
+
   try {
     const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
@@ -64,7 +79,7 @@ export const streamGroq = async (
       }
     }
   } catch (error: any) {
-    console.error('Groq Streaming Error:', error);
+    console.warn('Groq Streaming Error (Attempting Fallback):', error.message);
     // Rethrow to allow fallback logic in orchestrator
     throw error;
   }
