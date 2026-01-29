@@ -1,5 +1,6 @@
 
-const CEREBRAS_API_KEY = 'csk-hp83nkhheddc2k3e39w483cjmtn6wkn5ye23rm2ft4kdwetk';
+// Access key from environment variable
+const getCerebrasKey = () => process.env.CEREBRAS_API_KEY || "";
 
 export interface CerebrasMessage {
   role: 'system' | 'user' | 'assistant';
@@ -11,12 +12,19 @@ export const streamCerebras = async (
   modelId: string,
   onChunk: (text: string) => void
 ) => {
+  const apiKey = getCerebrasKey();
+
+  if (!apiKey) {
+      console.warn("Cerebras API Key missing");
+      throw new Error("Cerebras API Key is not configured.");
+  }
+
   try {
     const response = await fetch('https://api.cerebras.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${CEREBRAS_API_KEY}`
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
         model: modelId,
@@ -57,7 +65,6 @@ export const streamCerebras = async (
     }
   } catch (error) {
     console.error('Cerebras Streaming Error:', error);
-    // Rethrow to allow fallback logic
     throw error;
   }
 };

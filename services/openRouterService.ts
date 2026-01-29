@@ -1,16 +1,24 @@
 
-const OPENROUTER_API_KEY = "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";
+// Access key from environment variable
+const getOpenRouterKey = () => process.env.OPENROUTER_API_KEY || "";
 
 export const streamOpenRouter = async (
   messages: any[],
   modelId: string,
   onChunk: (text: string) => void
 ) => {
+  const apiKey = getOpenRouterKey();
+
+  if (!apiKey) {
+      console.warn("OpenRouter API Key missing");
+      throw new Error("OpenRouter API Key is not configured.");
+  }
+
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         // Dynamic origin to satisfy CORS requirements while working in different environments
         "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : "https://impersio.me",
@@ -66,7 +74,6 @@ export const streamOpenRouter = async (
     }
   } catch (error: any) {
     console.error('OpenRouter Streaming Error:', error);
-    // Rethrow to allow fallback logic
     throw error;
   }
 };

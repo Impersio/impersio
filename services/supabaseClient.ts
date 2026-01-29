@@ -1,7 +1,25 @@
-import { createClient } from '@supabase/supabase-js';
 
-// Credentials provided by the user
-const SUPABASE_URL = 'https://ahrjwdgnacbjqlntcwip.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFocmp3ZGduYWNianFsbnRjd2lwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg3MjQ4NzAsImV4cCI6MjA4NDMwMDg3MH0.ia7DNdHU-y-tWndUmc8mQF_jwfWGrQXfB2wVvT02H20';
+// Supabase has been removed from this project. 
+// This file acts as a placeholder to prevent import errors in legacy code.
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = {
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithPassword: async () => ({ data: null, error: new Error("Supabase removed") }),
+      signUp: async () => ({ data: null, error: new Error("Supabase removed") }),
+      signOut: async () => ({ error: null }),
+    },
+    from: (_table: string) => {
+      // Chainable dummy object
+      const dummyChain = {
+        select: () => dummyChain,
+        insert: () => dummyChain,
+        eq: () => dummyChain,
+        order: () => dummyChain,
+        single: () => Promise.resolve({ data: null, error: null }),
+        then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve)
+      };
+      return dummyChain;
+    }
+  };

@@ -1,3 +1,4 @@
+
 {
   "name": "scira-interface-clone",
   "version": "0.1.0",
@@ -10,7 +11,6 @@
   },
   "dependencies": {
     "@google/genai": "*",
-    "@supabase/supabase-js": "^2.39.3",
     "lucide-react": "^0.300.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

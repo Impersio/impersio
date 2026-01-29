@@ -1,8 +1,9 @@
 
 import { SearchResult } from "../types";
 
-const TAVILY_API_KEY = "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";
-const EXA_API_KEY = "52f53d72-83fc-46a4-9c8b-eff326dac3f6";
+// Access keys from environment variables configured in vite.config.ts
+const getTavilyKey = () => process.env.TAVILY_API_KEY || "";
+const getExaKey = () => process.env.EXA_API_KEY || "";
 
 // Heuristic to detect if a user likely wants to see images
 const isVisualIntent = (query: string): boolean => {
@@ -18,6 +19,13 @@ const isVisualIntent = (query: string): boolean => {
 
 // Optimized for speed < 1s using Exa
 export const searchFast = async (query: string): Promise<{ results: SearchResult[]; images: string[] }> => {
+  const exaKey = getExaKey();
+  
+  // If Exa key is missing, fall back immediately to web search (Tavily)
+  if (!exaKey) {
+      return searchWeb(query, 'fast-fallback');
+  }
+
   try {
     const visual = isVisualIntent(query);
 
@@ -27,17 +35,16 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
     }
 
     // Exa AI - Ultra Fast Neural Retrieval
-    // Retrieving 6 results (optimized for RAG context window vs latency)
     const response = await fetch("https://api.exa.ai/search", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": EXA_API_KEY,
+        "x-api-key": exaKey,
       },
       body: JSON.stringify({
         query: query,
         numResults: 6, 
-        type: "neural", // "keyword" is faster but "neural" is smarter for RAG grounding.
+        type: "neural", 
         useAutoprompt: true, 
         contents: {
           text: true,
@@ -47,7 +54,6 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
     });
 
     if (!response.ok) {
-       // Fail fast to fallback
        return searchWeb(query, 'fast-fallback');
     }
 
@@ -57,8 +63,6 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
         let hostname = 'Source';
         try { hostname = new URL(item.url).hostname; } catch (e) {}
         
-        // Prefer highlight, fallback to text slice
-        // RAG Optimization: Highlights are better for grounding than full text in fast mode
         const snippet = item.highlights?.[0] || item.text?.substring(0, 300) || "";
 
         return {
@@ -78,12 +82,19 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
 };
 
 export const searchWeb = async (query: string, mode: string = 'web'): Promise<{ results: SearchResult[]; images: string[] }> => {
+  const tavilyKey = getTavilyKey();
+
+  if (!tavilyKey) {
+      console.warn("Tavily API Key missing");
+      return { results: [], images: [] };
+  }
+
   try {
     let includeDomains: string[] | undefined = undefined;
     let topic = "general";
     let searchDepth = "basic"; 
     let includeImages = true;
-    let maxResults = 10; // Default 10 sources
+    let maxResults = 10; 
 
     if (mode === 'x') {
       includeDomains = ['twitter.com', 'x.com'];
@@ -114,7 +125,7 @@ export const searchWeb = async (query: string, mode: string = 'web'): Promise<{ 
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        api_key: TAVILY_API_KEY,
+        api_key: tavilyKey,
         query: searchString,
         search_depth: searchDepth,
         include_images: includeImages, 
@@ -155,10 +166,8 @@ export const searchNews = searchWeb;
 export const getSuggestions = async (query: string): Promise<string[]> => {
   if (!query || query.trim().length < 2) return [];
   try {
-    // Using Wikipedia OpenSearch as a reliable, CORS-friendly source for general knowledge autocomplete
     const response = await fetch(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(query)}&limit=5&origin=*&format=json`);
     const data = await response.json();
-    // Index 1 contains the suggestions
     return data[1] || [];
   } catch (error) {
     console.error("Suggestion Error:", error);

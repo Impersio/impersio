@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient';
+
 import { Message, SearchResult, WidgetData } from '../types';
 
 export interface SavedConversation {
@@ -7,31 +7,26 @@ export interface SavedConversation {
   created_at: string;
 }
 
-export const createConversation = async (title: string, userId?: string): Promise<string | null> => {
-  // If no user is logged in, do not attempt to create a conversation in Supabase.
-  if (!userId) {
-    return null;
-  }
+const CONVERSATIONS_KEY = 'impersio_local_conversations';
+const MESSAGES_PREFIX = 'impersio_local_msgs_';
 
+export const createConversation = async (title: string, userId?: string): Promise<string | null> => {
   try {
-    const payload = { 
-      title, 
-      user_id: userId 
+    const id = crypto.randomUUID();
+    const newConv: SavedConversation = {
+      id,
+      title,
+      created_at: new Date().toISOString()
     };
 
-    const { data, error } = await supabase
-      .from('conversations')
-      .insert([payload])
-      .select('id')
-      .single();
-
-    if (error) {
-      console.error('Error creating conversation:', error.message || JSON.stringify(error));
-      return null;
-    }
-    return data.id;
-  } catch (e: any) {
-    console.error('Unexpected error creating conversation:', e.message || e);
+    const existing = localStorage.getItem(CONVERSATIONS_KEY);
+    const conversations = existing ? JSON.parse(existing) : [];
+    conversations.unshift(newConv);
+    localStorage.setItem(CONVERSATIONS_KEY, JSON.stringify(conversations));
+    
+    return id;
+  } catch (e) {
+    console.error('Error creating conversation:', e);
     return null;
   }
 };
@@ -48,68 +43,44 @@ export const saveMessage = async (
   }
 ) => {
   try {
-    const { error } = await supabase
-      .from('messages')
-      .insert([{
-        conversation_id: conversationId,
+    const key = `${MESSAGES_PREFIX}${conversationId}`;
+    const existing = localStorage.getItem(key);
+    const messages = existing ? JSON.parse(existing) : [];
+
+    const newMessage = {
         role,
         content,
-        images: extraData?.images ? JSON.stringify(extraData.images) : null,
-        sources: extraData?.sources ? JSON.stringify(extraData.sources) : null,
-        widget: extraData?.widget ? JSON.stringify(extraData.widget) : null,
-        related_questions: extraData?.relatedQuestions ? JSON.stringify(extraData.relatedQuestions) : null
-      }]);
+        images: extraData?.images,
+        sources: extraData?.sources,
+        widget: extraData?.widget,
+        related_questions: extraData?.relatedQuestions,
+        created_at: new Date().toISOString()
+    };
 
-    if (error) {
-      console.error('Error saving message:', error.message || JSON.stringify(error));
-    }
-  } catch (e: any) {
-    console.error('Unexpected error saving message:', e.message || e);
+    messages.push(newMessage);
+    localStorage.setItem(key, JSON.stringify(messages));
+  } catch (e) {
+    console.error('Error saving message:', e);
   }
 };
 
 export const getUserConversations = async (userId: string): Promise<SavedConversation[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('conversations')
-      .select('id, title, created_at')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching conversations:', error.message || JSON.stringify(error));
-      return [];
-    }
-    return data || [];
-  } catch (e: any) {
-    console.error('Unexpected error fetching conversations:', e.message || e);
-    return [];
-  }
+    // In local mode, we ignore userId and return all local conversations
+    const existing = localStorage.getItem(CONVERSATIONS_KEY);
+    return existing ? JSON.parse(existing) : [];
 };
 
 export const getConversationMessages = async (conversationId: string): Promise<Message[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
+  const key = `${MESSAGES_PREFIX}${conversationId}`;
+  const existing = localStorage.getItem(key);
+  const rawMessages = existing ? JSON.parse(existing) : [];
 
-    if (error) {
-      console.error('Error fetching messages:', error.message || JSON.stringify(error));
-      return [];
-    }
-
-    return (data || []).map((msg: any) => ({
+  return rawMessages.map((msg: any) => ({
       role: msg.role,
       content: msg.content,
-      images: msg.images ? JSON.parse(msg.images) : undefined,
-      sources: msg.sources ? JSON.parse(msg.sources) : undefined,
-      widget: msg.widget ? JSON.parse(msg.widget) : undefined,
-      relatedQuestions: msg.related_questions ? JSON.parse(msg.related_questions) : undefined
-    }));
-  } catch (e: any) {
-    console.error('Unexpected error fetching messages:', e.message || e);
-    return [];
-  }
+      images: msg.images,
+      sources: msg.sources,
+      widget: msg.widget,
+      relatedQuestions: msg.related_questions
+  }));
 };

@@ -1,7 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { MessageSquare, X, LogOut, Trash2, Plus, LogIn, Info, Sun, Moon, Monitor } from 'lucide-react';
-import { supabase } from '../services/supabaseClient';
+import { X, LogOut, Plus, LogIn, Info, Sun, Moon, Monitor } from 'lucide-react';
 import { SavedConversation, getUserConversations } from '../services/chatStorageService';
 
 interface HistorySidebarProps {
@@ -31,22 +30,23 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen && userId) {
+    if (isOpen) {
       loadHistory();
-    } else {
-      setConversations([]);
     }
-  }, [isOpen, userId]);
+  }, [isOpen]);
 
   const loadHistory = async () => {
     setLoading(true);
-    const data = await getUserConversations(userId);
+    // userId is not strictly needed for local mode as everything is shared, but keeping signature
+    const data = await getUserConversations(userId || 'guest');
     setConversations(data);
     setLoading(false);
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    // Clear local user data
+    localStorage.removeItem('impersio_local_user');
+    window.location.reload();
     onClose();
   };
 
@@ -94,18 +94,18 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
                 <div className="w-12 h-12 bg-surface rounded-full flex items-center justify-center mb-4">
                    <LogIn className="w-6 h-6 text-muted" />
                 </div>
-                <h3 className="font-medium text-primary mb-2">Save your threads</h3>
-                <p className="text-sm text-muted mb-4">Sign in to keep your search history and access it anywhere.</p>
+                <h3 className="font-medium text-primary mb-2">Personalize</h3>
+                <p className="text-sm text-muted mb-4">Set your name to personalize the experience.</p>
                 <button 
                   onClick={() => { onClose(); onSignIn(); }}
                   className="px-4 py-2 bg-surface hover:bg-border border border-border rounded-lg text-sm font-medium transition-all"
                 >
-                  Sign In / Sign Up
+                  Set Profile
                 </button>
              </div>
           ) : (
              <>
-                <div className="px-3 py-2 text-xs font-semibold text-muted uppercase tracking-wider">History</div>
+                <div className="px-3 py-2 text-xs font-semibold text-muted uppercase tracking-wider">History (Local)</div>
                 {loading ? (
                   <div className="flex flex-col gap-2 p-2">
                     {[1,2,3].map(i => <div key={i} className="h-12 bg-surface animate-pulse rounded-lg" />)}
@@ -162,7 +162,7 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
                className="w-full flex items-center gap-3 p-3 text-sm text-muted hover:text-red-500 transition-colors rounded-lg hover:bg-surface"
              >
                <LogOut className="w-4 h-4" />
-               Sign Out
+               Reset Profile
              </button>
           )}
         </div>

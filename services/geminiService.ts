@@ -5,15 +5,20 @@ import { searchFast } from './googleSearchService';
 
 // Safe access to environment variable following guidelines
 const getApiKey = () => {
-    // 1. Try process.env (replaced by Vite define)
-    if (typeof process !== 'undefined' && process.env.API_KEY) {
-        return process.env.API_KEY;
+    // 1. Vite 'define' replaces process.env.GOOGLE_API_KEY with the actual string value during build.
+    // We must access it directly without checking 'typeof process' because 'process' does not exist in the browser.
+    const viteKey = process.env.GOOGLE_API_KEY;
+    if (viteKey && viteKey.length > 0) {
+        return viteKey;
     }
-    // 2. Try import.meta.env (Vite native fallback)
-    if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
-        const env = (import.meta as any).env;
-        return env.VITE_API_KEY || env.GOOGLE_API_KEY || env.VITE_GOOGLE_API_KEY || env.API_KEY;
-    }
+    
+    // 2. Legacy/Fallback checks (e.g. if running in a non-Vite environment that polyfills process)
+    try {
+        if (typeof process !== 'undefined' && process.env?.API_KEY) {
+            return process.env.API_KEY;
+        }
+    } catch (e) {}
+
     return undefined;
 };
 

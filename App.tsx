@@ -4,19 +4,16 @@ import {
   ChevronDown, 
   Copy,
   RotateCcw,
-  Share,
   Plus,
   ThumbsUp,
   ThumbsDown,
   ArrowUp,
-  MoreHorizontal,
   Clock,
   Search
 } from 'lucide-react';
 import { streamResponse, orchestrateProSearch, shouldSearch } from './services/geminiService';
 import { searchFast, getSuggestions } from './services/googleSearchService';
 import { createConversation, saveMessage } from './services/chatStorageService';
-import { supabase } from './services/supabaseClient';
 import { Message, SearchResult, ModelOption } from './types';
 import { Discover } from './components/Discover';
 import { About } from './components/About';
@@ -238,6 +235,22 @@ export default function App() {
   
   const { theme, setTheme } = useTheme();
 
+  // Initialize Local User
+  useEffect(() => {
+    const checkUser = () => {
+        const localUser = localStorage.getItem('impersio_local_user');
+        if (localUser) {
+            setUser(JSON.parse(localUser));
+        } else {
+            setUser(null);
+        }
+    };
+    checkUser();
+    // Helper to detect logout from other tabs or components
+    window.addEventListener('storage', checkUser);
+    return () => window.removeEventListener('storage', checkUser);
+  }, []);
+
   // Dynamic Greeting Logic
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -274,18 +287,6 @@ export default function App() {
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -340,7 +341,7 @@ export default function App() {
     if (!hasSearched) {
       setHasSearched(true);
       const title = finalQuery.length > 30 ? finalQuery.substring(0, 30) + "..." : finalQuery || "Search";
-      const newId = await createConversation(title, user?.id);
+      const newId = await createConversation(title, user?.id || 'guest');
       if (newId) {
         setConversationId(newId);
         currentConversationId = newId;
@@ -588,7 +589,7 @@ export default function App() {
                       <div className="flex items-center gap-4 mb-2">
                          <ImpersioLogo className="w-8 h-8 text-scira-accent animate-spin-slow" />
                          <h1 className="text-5xl md:text-6xl font-normal text-[#EBEBEB] font-serif tracking-tight">
-                            {getGreeting()}, {user?.email ? user.email.split('@')[0] : 'Anubhav'}
+                            {getGreeting()}, {user?.user_metadata?.full_name || 'Guest'}
                          </h1>
                       </div>
                     </div>

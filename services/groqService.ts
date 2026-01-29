@@ -1,13 +1,11 @@
 
 // Use environment variable for key, do not hardcode.
-// If missing, this service will fail gracefully and trigger the Gemini fallback.
 const getGroqApiKey = () => {
-  try {
-    if (typeof process !== 'undefined' && process.env) {
-      return process.env.GROQ_API_KEY;
-    }
-  } catch (e) {}
-  return undefined;
+    // Vite 'define' replaces this with the string value.
+    // Checking typeof process !== 'undefined' causes failure in browsers.
+    const key = process.env.GROQ_API_KEY;
+    if (key && key.length > 0) return key;
+    return undefined;
 };
 
 export const streamGroq = async (
@@ -18,6 +16,8 @@ export const streamGroq = async (
   const apiKey = getGroqApiKey();
   
   if (!apiKey) {
+    // Silent fail or fallback depending on orchestrator
+    // Throwing allows the fallback logic to kick in
     throw new Error("Groq API Key not configured. Triggering fallback.");
   }
 

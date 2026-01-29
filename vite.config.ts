@@ -4,23 +4,17 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
-  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
     plugins: [react()],
     define: {
-      // Explicitly expose these specific keys to the client side
-      // Checks multiple common naming conventions for maximum compatibility
-      'process.env.API_KEY': JSON.stringify(
-        env.API_KEY || 
-        env.VITE_API_KEY || 
-        env.GOOGLE_API_KEY || 
-        env.VITE_GOOGLE_API_KEY || 
-        process.env.GOOGLE_API_KEY || 
-        process.env.API_KEY || 
-        ''
-      ),
+      // API Keys Mapping (Securely passed from build environment to client)
+      'process.env.GOOGLE_API_KEY': JSON.stringify(env.GOOGLE_API_KEY || env.VITE_GOOGLE_API_KEY || ''),
+      'process.env.TAVILY_API_KEY': JSON.stringify(env.TAVILY_API_KEY || env.VITE_TAVILY_API_KEY || ''),
+      'process.env.EXA_API_KEY': JSON.stringify(env.EXA_API_KEY || env.VITE_EXA_API_KEY || ''),
+      'process.env.OPENROUTER_API_KEY': JSON.stringify(env.OPENROUTER_API_KEY || env.VITE_OPENROUTER_API_KEY || ''),
+      'process.env.CEREBRAS_API_KEY': JSON.stringify(env.CEREBRAS_API_KEY || env.VITE_CEREBRAS_API_KEY || ''),
       'process.env.GROQ_API_KEY': JSON.stringify(env.GROQ_API_KEY || env.VITE_GROQ_API_KEY || ''),
     },
     server: {

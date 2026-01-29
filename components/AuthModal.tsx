@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../services/supabaseClient';
-import { X, Mail, Lock, Loader2, CheckCircle } from 'lucide-react';
+import { X, User, Loader2 } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -9,66 +8,30 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [verificationSent, setVerificationSent] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setError(null);
-      setVerificationSent(false);
-      setPassword('');
+      setName('');
     }
-  }, [isOpen, isLogin]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
-  // Helper to determine the correct redirect URL for Email Confirmation
-  const getRedirectUrl = () => {
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      return 'http://localhost:3000';
-    }
-    return 'https://impersio.me';
-  };
-
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleSetProfile = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
-
-    try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
+    
+    // Simulate API delay
+    setTimeout(() => {
+        const user = { id: 'local-user', email: `${name.toLowerCase()}@local`, user_metadata: { full_name: name } };
+        localStorage.setItem('impersio_local_user', JSON.stringify(user));
+        // Force a page reload or state update to reflect the user change
+        window.location.reload(); 
+        setLoading(false);
         onClose();
-      } else {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: getRedirectUrl(), 
-          }
-        });
-        if (error) throw error;
-        
-        // If session is null after sign up, email verification is required
-        if (data.session) {
-          onClose(); 
-        } else if (data.user) {
-          setVerificationSent(true);
-        }
-      }
-    } catch (err: any) {
-      setError(err.message || "Authentication failed");
-    } finally {
-      setLoading(false);
-    }
+    }, 600);
   };
 
   return (
@@ -81,94 +44,38 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
           <X className="w-5 h-5" />
         </button>
 
-        {verificationSent ? (
-          <div className="flex flex-col items-center text-center py-4">
-            <div className="w-16 h-16 bg-scira-accent/10 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="w-8 h-8 text-scira-accent" />
+        <h2 className="text-2xl font-semibold text-primary mb-2">
+           Set Profile
+        </h2>
+        <p className="text-sm text-muted mb-6">
+           Enter your name to personalize your experience. This is stored locally on your device.
+        </p>
+
+        <form onSubmit={handleSetProfile} className="space-y-4">
+            <div className="space-y-1">
+                <label className="text-xs font-medium text-muted ml-1">Name</label>
+                <div className="relative">
+                <User className="absolute left-3 top-2.5 w-4 h-4 text-muted" />
+                <input 
+                    type="text" 
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl py-2 pl-10 pr-4 text-primary focus:outline-none focus:border-primary/50 transition-colors"
+                    placeholder="Your name"
+                    autoFocus
+                />
+                </div>
             </div>
-            <h2 className="text-2xl font-semibold text-primary mb-2">Check your email</h2>
-            <p className="text-muted mb-6">
-              We've sent a confirmation link to <span className="font-medium text-primary">{email}</span>. Please click the link to verify your account and sign in.
-            </p>
+
             <button 
-              onClick={() => {
-                setVerificationSent(false);
-                setIsLogin(true);
-              }}
-              className="w-full bg-surface-hover border border-border text-primary font-medium py-2.5 rounded-xl hover:bg-muted/10 transition-colors"
+                type="submit"
+                disabled={loading}
+                className="w-full bg-primary text-background font-medium py-2.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
             >
-              Back to Sign In
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Continue'}
             </button>
-          </div>
-        ) : (
-          <>
-            <h2 className="text-2xl font-semibold text-primary mb-2">
-              {isLogin ? 'Welcome back' : 'Create account'}
-            </h2>
-            <p className="text-sm text-muted mb-6">
-              {isLogin ? 'Sign in to access your search history' : 'Sign up to save your conversations'}
-            </p>
-
-            <div className="space-y-4">
-              <form onSubmit={handleAuth} className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted ml-1">Email</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-2.5 w-4 h-4 text-muted" />
-                    <input 
-                      type="email" 
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full bg-background border border-border rounded-xl py-2 pl-10 pr-4 text-primary focus:outline-none focus:border-primary/50 transition-colors"
-                      placeholder="you@example.com"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted ml-1">Password</label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-2.5 w-4 h-4 text-muted" />
-                    <input 
-                      type="password" 
-                      required
-                      minLength={6}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-background border border-border rounded-xl py-2 pl-10 pr-4 text-primary focus:outline-none focus:border-primary/50 transition-colors"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 text-sm">
-                    {error}
-                  </div>
-                )}
-
-                <button 
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-primary text-background font-medium py-2.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : (isLogin ? 'Sign In' : 'Sign Up')}
-                </button>
-              </form>
-            </div>
-
-            <div className="mt-6 text-center text-sm text-muted">
-              {isLogin ? "Don't have an account? " : "Already have an account? "}
-              <button 
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-primary font-medium hover:underline"
-              >
-                {isLogin ? 'Sign Up' : 'Sign In'}
-              </button>
-            </div>
-          </>
-        )}
+        </form>
       </div>
     </div>
   );
