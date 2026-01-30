@@ -69,6 +69,7 @@ export interface ProSearchStep {
   status: 'pending' | 'in-progress' | 'completed';
   queries: string[];
   sources: SearchResult[];
+  finding?: string; // The "Thought" or summary of this step
 }
 
 export interface Message {

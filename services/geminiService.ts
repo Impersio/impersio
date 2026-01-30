@@ -8,8 +8,6 @@ import { streamCerebras } from './cerebrasService';
 
 // Safe access to environment variable following guidelines
 const getApiKey = () => {
-    // 1. Vite 'define' replaces process.env.GOOGLE_API_KEY with the actual string value during build.
-    // We must access it directly without checking 'typeof process' because 'process' does not exist in the browser.
     const viteKey = process.env.GOOGLE_API_KEY;
     if (viteKey && viteKey.length > 0) {
         return viteKey;
@@ -17,7 +15,6 @@ const getApiKey = () => {
     return undefined;
 };
 
-// Initialize with a dummy key if missing to prevent immediate crash.
 const getAiClient = () => {
     const key = getApiKey();
     return new GoogleGenAI({ apiKey: key || "dummy_key_for_init" });
@@ -32,7 +29,7 @@ export const shouldSearch = async (query: string): Promise<boolean> => {
     
     try {
         const key = getApiKey();
-        if (!key) return true; // Default to search if no AI key
+        if (!key) return true; 
         
         const ai = getAiClient();
         const response = await ai.models.generateContent({
@@ -69,10 +66,10 @@ const generatePlan = async (query: string): Promise<string[]> => {
         const response = await ai.models.generateContent({
             model: 'gemini-2.0-flash',
             contents: `You are a Deep Research Planning Agent.
-            Break down the user's query into 3 to 5 distinct, sequential, and comprehensive research steps.
-            The goal is to provide a "Deep Think" answer.
+            Break down the user's query into 4 to 6 distinct, sequential, and comprehensive research steps.
+            The goal is to provide a "Deep Think" answer that takes time to uncover hidden details.
             
-            Steps should be actionable (e.g., "Analyze the history of...", "Compare technical specifications of...", "Investigate recent developments in...").
+            Steps should be highly specific (e.g., "Analyze the historical context of...", "Compare technical specifications of...", "Investigate recent 2024 developments in...").
             
             User Query: "${query}"
             
@@ -89,7 +86,7 @@ const generatePlan = async (query: string): Promise<string[]> => {
         if (!text) return ["Analyze the query", "Search for key information", "Synthesize findings"];
         return JSON.parse(text);
     } catch (e) {
-        return ["Research the topic", "Find latest details", "Summarize answer"];
+        return ["Research the topic", "Find latest details", "Compare perspectives", "Summarize answer"];
     }
 };
 
@@ -98,7 +95,7 @@ const generateQueriesForStep = async (stepTitle: string, originalQuery: string):
         const ai = getAiClient();
         const response = await ai.models.generateContent({
             model: 'gemini-2.0-flash',
-            contents: `Generate 2 specific and effective search queries to complete this research step: "${stepTitle}".
+            contents: `Generate 3 specific and effective search queries to complete this research step: "${stepTitle}".
             Context (Original Query): "${originalQuery}".
             
             Return strictly a JSON array of strings.`,
@@ -118,6 +115,28 @@ const generateQueriesForStep = async (stepTitle: string, originalQuery: string):
     }
 };
 
+const analyzeSearchResults = async (stepTitle: string, results: SearchResult[]): Promise<string> => {
+    if (!results || results.length === 0) return "No relevant information found.";
+    
+    try {
+        const ai = getAiClient();
+        const context = results.slice(0, 5).map(r => `Source: ${r.title}\nSnippet: ${r.snippet}`).join('\n\n');
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.0-flash',
+            contents: `Analyze these search results specifically for the step: "${stepTitle}".
+            Extract key facts, figures, and insights.
+            Be concise but dense. One short paragraph.
+            
+            Context:
+            ${context}`,
+        });
+        return response.text || "Analyzed search results.";
+    } catch (e) {
+        return "Processed search results.";
+    }
+};
+
 // --- Main Orchestrator ---
 
 export const orchestrateProSearch = async (
@@ -129,6 +148,7 @@ export const orchestrateProSearch = async (
 ) => {
     const steps: ProSearchStep[] = [];
     const allSources: SearchResult[] = [];
+    const stepFindings: string[] = [];
 
     const plan = await generatePlan(query);
     plan.forEach((title, idx) => {
@@ -140,17 +160,20 @@ export const orchestrateProSearch = async (
             sources: []
         });
     });
-    if (!plan.some(p => p.toLowerCase().includes('wrap') || p.toLowerCase().includes('summary'))) {
+    
+    // Ensure we have a final synthesis step if not present
+    if (!plan.some(p => p.toLowerCase().includes('synthesis') || p.toLowerCase().includes('report'))) {
         steps.push({ id: 'step-final', title: 'Synthesizing Deep Research Report', status: 'pending', queries: [], sources: [] });
     }
     
     onStepsUpdate([...steps]);
 
     for (let i = 0; i < steps.length; i++) {
-        if (steps[i].title.includes('Synthesizing') && i === steps.length - 1) {
+        // Special case for the final synthesis step - just a visual delay
+        if (i === steps.length - 1 && steps[i].title.includes('Synthesizing')) {
              steps[i].status = 'in-progress';
              onStepsUpdate([...steps]);
-             await new Promise(r => setTimeout(r, 800)); // Visual pause for "thinking"
+             await new Promise(r => setTimeout(r, 1500)); // Visual "Thinking" pause
              steps[i].status = 'completed';
              onStepsUpdate([...steps]);
              continue;
@@ -159,11 +182,12 @@ export const orchestrateProSearch = async (
         steps[i].status = 'in-progress';
         onStepsUpdate([...steps]);
 
+        // 1. Generate Queries
         const queries = await generateQueriesForStep(steps[i].title, query);
         steps[i].queries = queries;
         onStepsUpdate([...steps]);
 
-        // Execute searches (using fast Exa search)
+        // 2. Execute Searches (Exa Fast)
         const searchPromises = queries.map(q => searchFast(q));
         const results = await Promise.all(searchPromises);
         
@@ -172,23 +196,35 @@ export const orchestrateProSearch = async (
             if (r.results) stepSources.push(...r.results);
         });
 
-        // Unique filter based on URL
+        // Unique filter
         const uniqueSources = stepSources.filter((s, index, self) => 
             index === self.findIndex((t) => (t.link === s.link))
         );
 
         steps[i].sources = uniqueSources;
         allSources.push(...uniqueSources);
+        onStepsUpdate([...steps]);
+
+        // 3. Deep Analysis (Thinking Phase)
+        // This adds the requested "time" and "thinking" aspect
+        if (uniqueSources.length > 0) {
+            const finding = await analyzeSearchResults(steps[i].title, uniqueSources);
+            steps[i].finding = finding;
+            stepFindings.push(`Step: ${steps[i].title}\nFindings: ${finding}`);
+        } else {
+            steps[i].finding = "No sufficient data found, proceeding to next step.";
+        }
         
         steps[i].status = 'completed';
         onStepsUpdate([...steps]);
     }
 
-    // Final Deduplication of all sources
+    // Final Deduplication
     const finalUniqueSources = allSources.filter((s, index, self) => 
         index === self.findIndex((t) => (t.link === s.link))
     );
 
+    // Pass the accumulated findings to the final generator for a "Deep Think" answer
     await streamResponse(
         query,
         modelId,
@@ -200,7 +236,8 @@ export const orchestrateProSearch = async (
         (chunk) => onComplete(chunk, finalUniqueSources),
         () => {}, 
         () => {}, 
-        (full, widget, related) => {}
+        (full, widget, related) => {},
+        stepFindings.join('\n\n') // Pass findings as extra context
     );
 };
 
@@ -233,7 +270,8 @@ export const streamResponse = async (
   onChunk: (content: string) => void,
   onWidget: (widget: WidgetData) => void,
   onRelated: (questions: string[]) => void,
-  onComplete?: (fullContent: string, widget: WidgetData | undefined, relatedQuestions: string[]) => void
+  onComplete?: (fullContent: string, widget: WidgetData | undefined, relatedQuestions: string[]) => void,
+  deepFindings?: string // Optional extra context from Pro Search
 ): Promise<void> => {
   
   // RAG Context Construction
@@ -244,17 +282,23 @@ export const streamResponse = async (
   });
   const hasResults = searchResults.length > 0;
 
-  const ragContext = hasResults 
+  let ragContext = hasResults 
       ? searchResults.map((r, i) => `CITATION [${i+1}] ${r.title}\nURL: ${r.link}\nCONTENT: ${r.snippet}`).join('\n\n')
       : "No external context provided. Rely on internal knowledge.";
+
+  // Inject Deep Research Findings if available
+  if (deepFindings) {
+      ragContext = `DEEP RESEARCH FINDINGS (Prioritize these insights):\n${deepFindings}\n\nRAW SOURCES:\n${ragContext}`;
+  }
 
   const strictFormatInstructions = `
   FORMATTING RULES (STRICT):
   1. **Structure**: Start directly with the answer. Use ### Headers for sections.
-  2. **Citations**: You MUST use inline citations like [1], [2]. **IMPORTANT**: Place citations at the END of sentences or paragraphs. DO NOT place them in the middle of sentences or text flows.
+  2. **Citations**: You MUST use inline citations like [1], [2]. **IMPORTANT**: Place citations at the END of sentences or paragraphs.
   3. **Tone**: Objective, professional, yet conversational.
   4. **Date**: Today is ${currentDateTime}.
   5. **Formatting**: Use strict bullet points for lists. Ensure H3 headers are used for sub-sections.
+  6. **Length**: Provide a comprehensive, detailed report. Deeply explain the concepts, but stay focused. (Long but not too long).
   `;
 
   const fullPrompt = `
