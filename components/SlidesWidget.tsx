@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Download, Maximize2, X, Image as ImageIcon, Upload } from 'lucide-react';
 import { SlidesWidgetData } from '../types';
@@ -47,7 +48,7 @@ export const SlidesWidget: React.FC<SlidesWidgetProps> = ({ data }) => {
     const BG_COLOR = 'FFFFFF';
     const TEXT_COLOR = '333333';
     const TITLE_COLOR = '111111';
-    const ACCENT_COLOR = '20808D'; // True Turquoise
+    const ACCENT_COLOR = '21808D'; // Updated Teal
 
     // Helper to get image data (Base64 is safest for browser generation)
     const getImageDataForSlide = async (idx: number, url?: string) => {
@@ -241,7 +242,7 @@ export const SlidesWidget: React.FC<SlidesWidgetProps> = ({ data }) => {
                                     />
                                     <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                                         {currentSlide.chart.data.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#20808D' : '#A84B2F'} />
+                                            <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#21808D' : '#A84B2F'} />
                                         ))}
                                     </Bar>
                                 </BarChart>

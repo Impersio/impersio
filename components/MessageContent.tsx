@@ -45,7 +45,7 @@ const CitationPill = ({ source, label }: { source: SearchResult; label: string }
         className={`citation-pill select-none inline-flex items-center justify-center h-5 px-2 text-[10px] font-bold rounded-full align-middle ml-0.5 cursor-pointer transition-all border
         ${isOpen 
             ? 'bg-primary text-background border-primary' 
-            : 'bg-[#DA7756]/10 text-[#DA7756] border-[#DA7756]/20 hover:bg-[#DA7756]/20'
+            : 'bg-[#21808D]/10 text-[#21808D] border-[#21808D]/20 hover:bg-[#21808D]/20'
         }`}
         type="button"
         title={source.title}

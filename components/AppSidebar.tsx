@@ -5,9 +5,11 @@ import {
   MessageSquare,
   LayoutGrid,
   Library,
-  Code
+  Code,
+  Sparkles
 } from 'lucide-react';
 import { SidebarToggleIcon } from './Icons';
+import { User } from '../types';
 
 interface AppSidebarProps {
   currentView: 'home' | 'discover' | 'about';
@@ -15,7 +17,8 @@ interface AppSidebarProps {
   onNewChat: () => void;
   onToggleHistory: () => void;
   onSignIn: () => void;
-  user: any;
+  onUpgrade: () => void;
+  user: User | null;
   theme: 'light' | 'dark' | 'system';
   onToggleTheme: () => void;
 }
@@ -24,9 +27,9 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onNewChat,
   onToggleHistory,
   onSignIn,
+  onUpgrade,
   user
 }) => {
-  // Added 'hidden md:flex' to hide on mobile
   return (
     <aside className="hidden md:flex w-[50px] h-screen bg-sidebar border-r border-border flex-col items-center py-4 fixed left-0 top-0 z-50">
        
@@ -86,13 +89,24 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
           </button>
        </div>
 
-       {/* Footer: User Profile */}
-       <div className="mt-auto">
+       <div className="mt-auto flex flex-col items-center gap-3">
+          {/* Upgrade Icon if not pro */}
+          {(!user || !user.is_pro) && (
+              <button 
+                onClick={onUpgrade}
+                className="w-8 h-8 rounded-full bg-surface hover:bg-surface-hover text-scira-accent flex items-center justify-center transition-colors"
+                title="Upgrade to Pro"
+              >
+                 <Sparkles className="w-4 h-4" />
+              </button>
+          )}
+
+          {/* User Profile */}
           <button 
             onClick={onSignIn}
             className="w-8 h-8 rounded-full bg-[#E5E3DC] text-[#333] flex items-center justify-center font-medium text-xs hover:opacity-90 transition-opacity"
           >
-             {user ? user.email?.[0].toUpperCase() : 'A'}
+             {user?.email ? user.email[0].toUpperCase() : 'G'}
           </button>
        </div>
     </aside>

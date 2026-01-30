@@ -81,3 +81,11 @@ export interface Message {
   relatedQuestions?: string[];
   proSearchSteps?: ProSearchStep[];
 }
+
+export interface User {
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  is_pro?: boolean;
+}

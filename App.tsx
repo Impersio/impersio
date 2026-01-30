@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   ChevronDown, 
   Copy,
-  RotateCcw,
+  RotateCcw, 
   Plus,
   ThumbsUp,
   ThumbsDown,
@@ -17,12 +17,14 @@ import {
   X,
   FileText,
   File,
-  MoreHorizontal
+  MoreHorizontal,
+  Sparkles
 } from 'lucide-react';
 import { streamResponse, orchestrateProSearch, detectIntent } from './services/geminiService';
 import { searchFast, getSuggestions } from './services/googleSearchService';
 import { createConversation, saveMessage } from './services/chatStorageService';
-import { Message, SearchResult, ModelOption } from './types';
+import { authService } from './services/authService';
+import { Message, SearchResult, ModelOption, User } from './types';
 import { Discover } from './components/Discover';
 import { About } from './components/About';
 import { TimeWidget } from './components/TimeWidget';
@@ -30,6 +32,7 @@ import { StockWidget } from './components/StockWidget';
 import { WeatherWidget } from './components/WeatherWidget';
 import { SlidesWidget } from './components/SlidesWidget';
 import { AuthModal } from './components/AuthModal';
+import { SubscriptionModal } from './components/SubscriptionModal';
 import { HistorySidebar } from './components/HistorySidebar';
 import { AppSidebar } from './components/AppSidebar';
 import { MessageContent } from './components/MessageContent';
@@ -177,7 +180,6 @@ const MessageItem: React.FC<MessageItemProps> = ({
           a.click();
           URL.revokeObjectURL(url);
       } else if (format === 'pdf') {
-          // Simple Print to PDF strategy for no-library environments
           const printWindow = window.open('', '', 'width=800,height=600');
           if (printWindow) {
               printWindow.document.write(`
@@ -203,7 +205,6 @@ const MessageItem: React.FC<MessageItemProps> = ({
               printWindow.close();
           }
       } else if (format === 'docx') {
-           // Simple HTML doc strategy
            const header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
            const footer = "</body></html>";
            const sourceHTML = header + content.replace(/\n/g, '<br>') + footer;
@@ -448,34 +449,27 @@ export default function App() {
   const [view, setView] = useState<'home' | 'discover' | 'about'>('home');
   const [attachments, setAttachments] = useState<string[]>([]);
   const [isMobile, setIsMobile] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  
+  // Modals
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
   
   const { theme, setTheme } = useTheme();
 
+  // Load user on mount and check model permission
   useEffect(() => {
-    const checkUser = () => {
-        const localUser = localStorage.getItem('impersio_local_user');
-        if (localUser) {
-            setUser(JSON.parse(localUser));
-        } else {
-            setUser(null);
-        }
-    };
-    checkUser();
-    window.addEventListener('storage', checkUser);
-    return () => window.removeEventListener('storage', checkUser);
+    const currentUser = authService.getCurrentUser();
+    setUser(currentUser);
+    
+    // Enforce model lock if not pro
+    if (!currentUser?.is_pro && selectedModel.id !== MODEL_OPTIONS[0].id) {
+        setSelectedModel(MODEL_OPTIONS[0]);
+    }
   }, []);
-
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Morning";
-    if (hour < 18) return "Afternoon";
-    return "Evening";
-  };
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -771,6 +765,8 @@ export default function App() {
                         onSelect={setSelectedModel}
                         isOpen={isModelSelectorOpen}
                         onToggle={() => setIsModelSelectorOpen(!isModelSelectorOpen)}
+                        isPro={!!user?.is_pro}
+                        onOpenProModal={() => user ? setIsSubscriptionModalOpen(true) : setIsAuthModalOpen(true)}
                      />
                      <button 
                         onClick={() => handleSearch()}
@@ -805,13 +801,20 @@ export default function App() {
   );
 
   return (
-    <div className={`min-h-screen bg-background text-primary font-sans selection:bg-scira-accent/20 flex flex-row overflow-hidden`}>
+    <div className={`min-h-screen bg-background text-primary font-sans selection:bg-scira-accent/20 flex flex-row overflow-hidden transition-colors duration-300`}>
       <AppSidebar 
         currentView={view} 
         onNavigate={setView}
         onNewChat={handleNewChat}
         onToggleHistory={() => setIsHistoryOpen(true)}
         onSignIn={() => setIsAuthModalOpen(true)}
+        onUpgrade={() => {
+            if (user) {
+                setIsSubscriptionModalOpen(true);
+            } else {
+                setIsAuthModalOpen(true);
+            }
+        }}
         user={user}
         theme={theme}
         onToggleTheme={cycleTheme}
@@ -830,8 +833,9 @@ export default function App() {
       />
 
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <SubscriptionModal isOpen={isSubscriptionModalOpen} onClose={() => setIsSubscriptionModalOpen(false)} />
 
-      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative md:ml-[50px] transition-all duration-300">
+      <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative md:ml-[60px] transition-all duration-300">
          {view === 'about' && <About onBack={() => setView('home')} />}
          {view === 'discover' && <Discover onBack={() => setView('home')} />}
 
@@ -840,19 +844,37 @@ export default function App() {
               {!hasSearched ? (
                 <div className="flex flex-col items-center justify-center p-4 w-full h-full animate-fade-in max-w-4xl mx-auto">
                     
-                    <div className="mb-8 bg-[#1A1A1A] border border-[#333] rounded-full px-4 py-1.5 flex items-center gap-2">
-                       <span className="text-xs text-[#999] font-medium">Free plan</span>
-                       <span className="text-xs text-[#555]">•</span>
-                       <button className="text-xs text-[#999] hover:text-white transition-colors underline decoration-[#555] underline-offset-2">Upgrade</button>
+                    {/* Badge */}
+                    <div className="mb-8 bg-surface border border-border rounded-full px-4 py-1.5 flex items-center gap-2 shadow-subtle">
+                       <span className="text-xs text-muted font-medium">
+                          {user?.is_pro ? "Pro Plan Active" : "Free Plan"}
+                       </span>
+                       {!user?.is_pro && (
+                           <>
+                            <span className="text-xs text-muted/50">•</span>
+                            <button 
+                                onClick={() => user ? setIsSubscriptionModalOpen(true) : setIsAuthModalOpen(true)}
+                                className="text-xs text-muted hover:text-primary transition-colors underline decoration-muted/40 underline-offset-2"
+                            >
+                                Upgrade
+                            </button>
+                           </>
+                       )}
+                       {user?.is_pro && <Sparkles className="w-3 h-3 text-scira-accent" />}
                     </div>
 
                     <div className="w-full max-w-2xl mb-12 flex flex-col items-center text-center">
                       <div className="flex items-center gap-4 mb-2">
-                         <ImpersioLogo className="w-8 h-8 text-scira-accent animate-spin-slow" />
-                         <h1 className="text-5xl md:text-6xl font-normal text-[#EBEBEB] font-serif tracking-tight">
-                            {getGreeting()}, {user?.user_metadata?.full_name || 'Guest'}
-                         </h1>
+                         <ImpersioLogo className="w-12 h-12 text-[#21808D]" />
                       </div>
+                      <h1 className="text-4xl md:text-5xl font-medium text-primary font-serif tracking-tight mt-4 flex items-center justify-center gap-3">
+                         Impersio
+                         {user?.is_pro && (
+                             <span className="font-sans text-2xl md:text-3xl text-[#21808D] font-light border border-[#21808D] px-2 py-0 rounded-md tracking-normal bg-[#21808D]/5 translate-y-0.5">
+                                 pro
+                             </span>
+                         )}
+                      </h1>
                     </div>
 
                     {renderInputBar(true)}
@@ -863,11 +885,11 @@ export default function App() {
                          { icon: GraduationCapIcon, label: 'Learn' },
                          { icon: TrendingUpIcon, label: 'Strategize' },
                          { icon: PenIcon, label: 'Write' },
-                         { icon: CoffeeIcon, label: 'Life stuff' },
+                         { icon: CoffeeIcon, label: 'Life' },
                        ].map((item, idx) => (
                           <button 
                             key={idx}
-                            className="flex items-center gap-2 px-4 py-2 bg-[#1A1A1A] border border-[#333] hover:bg-[#252525] rounded-xl text-sm text-[#999] hover:text-white transition-all font-medium"
+                            className="flex items-center gap-2 px-4 py-2 bg-surface border border-border hover:bg-surface-hover rounded-xl text-sm text-muted hover:text-primary transition-all font-medium shadow-subtle"
                           >
                              <item.icon className="w-4 h-4" />
                              {item.label}
@@ -895,7 +917,7 @@ export default function App() {
                     <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-background via-background to-transparent pt-12 pb-8 z-20 px-4">
                       <div className="max-w-3xl mx-auto">
                           {renderInputBar(false)}
-                          <div className="text-center mt-3 text-xs text-[#444]">
+                          <div className="text-center mt-3 text-xs text-muted/60">
                              {selectedModel.name} (Preview) can make mistakes. Please double-check responses.
                           </div>
                       </div>
