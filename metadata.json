@@ -1,6 +1,6 @@
 {
   "name": "Impersio",
-  "description": "Impersio is a minimalist AI search engine.",
+  "description": "Impersio is a free AI-powered answer search engine that provides accurate, trusted, and real-time answers to any question.",
   "requestFramePermissions": [
     "microphone"
   ]

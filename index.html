@@ -4,14 +4,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
-    <title>Impersio</title>
-    <meta name="description" content="Impersio is a minimalist AI search engine." />
+    <title>Impersio - AI Search Engine</title>
+    <meta name="description" content="Impersio is a free AI-powered answer search engine that provides accurate, trusted, and real-time answers to any question." />
+    <meta property="og:title" content="Impersio - AI Search Engine" />
+    <meta property="og:description" content="Impersio is a free AI-powered answer search engine that provides accurate, trusted, and real-time answers to any question." />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#FAF8F5" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%23DA7756' stroke-width='2' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z' /%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+    
+    <!-- Structured Data for Google Search -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Impersio",
+      "url": "https://impersio.me",
+      "description": "Impersio is a free AI-powered answer search engine that provides accurate, trusted, and real-time answers to any question.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://impersio.me/?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    
     <script>
       tailwind.config = {
         darkMode: 'class',
