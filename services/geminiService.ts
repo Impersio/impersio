@@ -253,7 +253,7 @@ export const streamResponse = async (
       }
   }
 
-  // --- Gemini Path ---
+  // --- Gemini Path (Default) ---
   const ai = getAiClient();
   const tools = useBuiltInSearch ? [{ googleSearch: {} }] : undefined;
   
@@ -324,7 +324,62 @@ export const streamResponse = async (
     if (onComplete) onComplete(parts[0], undefined, []);
 
   } catch (err: any) {
-      console.error(err);
-      onChunk("Sorry, I encountered an error while processing your request (Quota Exceeded or Network Error). Please try again.");
+      console.error("Gemini Error:", err);
+      
+      // --- Fallback Logic ---
+      console.log("Attempting Fallback: Groq");
+      try {
+          onChunk("\n\n*Switching to backup model (Groq)...*\n\n");
+          
+          let fullText = "";
+          await streamGroq(
+            [{ role: 'user', content: fullPrompt }],
+            'llama-3.3-70b-versatile',
+            (chunk) => {
+                fullText += chunk;
+                const split = fullText.split('|||');
+                onChunk(split[0]); 
+            }
+          );
+          
+          const parts = fullText.split('|||');
+          if (parts.length > 1) {
+            const related = parts.slice(1).join('').split('\n').map(q => q.trim()).filter(q => q.length > 5);
+            onRelated(related);
+          }
+          if (onComplete) onComplete(parts[0], undefined, []);
+          return;
+
+      } catch (groqErr) {
+          console.error("Groq Fallback Error:", groqErr);
+          console.log("Attempting Fallback: OpenRouter");
+          
+          try {
+              onChunk("\n\n*Switching to backup model (OpenRouter)...*\n\n");
+
+              let fullText = "";
+              await streamOpenRouter(
+                [{ role: 'user', content: fullPrompt }],
+                'meta-llama/llama-3.3-70b-instruct',
+                (chunk) => {
+                    fullText += chunk;
+                    const split = fullText.split('|||');
+                    onChunk(split[0]); 
+                }
+              );
+
+              const parts = fullText.split('|||');
+              if (parts.length > 1) {
+                const related = parts.slice(1).join('').split('\n').map(q => q.trim()).filter(q => q.length > 5);
+                onRelated(related);
+              }
+              if (onComplete) onComplete(parts[0], undefined, []);
+              return;
+              
+          } catch (orErr) {
+              console.error("OpenRouter Fallback Error:", orErr);
+              onChunk("Sorry, all services are currently unavailable. Please check your connection or try again later.");
+          }
+      }
   }
 };
