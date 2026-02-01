@@ -3,11 +3,8 @@ import {
   Search,
   Globe,
   Library,
-  Sparkles,
-  LogIn,
-  LogOut,
-  User as UserIcon,
-  Plus
+  Plus,
+  LogIn
 } from 'lucide-react';
 import { 
   Sidebar, 
@@ -41,110 +38,67 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   onNewChat,
   onToggleHistory,
   onSignIn,
-  onUpgrade,
   user
 }) => {
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader>
+    <Sidebar collapsible="none" className="w-[60px] border-r border-border bg-sidebar flex flex-col items-center py-4 gap-4">
+      <SidebarHeader className="p-0 flex justify-center w-full">
         <SidebarMenu>
             <SidebarMenuItem>
-                <SidebarMenuButton 
-                  size="lg" 
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground group-data-[collapsible=icon]:!p-0"
-                  onClick={onNewChat}
-                >
-                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-transparent text-[#21808D]">
-                        <ImpersioLogo className="size-6" />
-                    </div>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                        <span className="truncate font-semibold text-lg font-serif">Impersio</span>
-                    </div>
-                </SidebarMenuButton>
+                <div className="flex items-center justify-center w-10 h-10">
+                     <ImpersioLogo className="w-8 h-8 text-[#21808D]" />
+                </div>
             </SidebarMenuItem>
             
-            <div className="group-data-[collapsible=icon]:hidden px-2 py-1">
+            <SidebarMenuItem className="mt-4">
                  <button 
                     onClick={onNewChat}
-                    className="w-full flex items-center gap-2 bg-surface border border-border rounded-full px-3 py-1.5 text-sm text-muted hover:text-primary transition-colors shadow-sm"
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-surface hover:bg-surface-hover border border-border text-primary transition-colors"
+                    title="New Thread"
                  >
-                     <Plus className="w-4 h-4" />
-                     <span>New Thread</span>
-                     <span className="ml-auto text-xs opacity-50 border border-border px-1.5 rounded">Ctrl I</span>
+                     <Plus className="w-5 h-5" />
                  </button>
-            </div>
+            </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <SidebarMenuButton 
-                        onClick={() => onNavigate('home')} 
-                        isActive={currentView === 'home'}
-                        tooltip="Home"
-                    >
-                        <Search className="size-4" />
-                        <span>Home</span>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                <SidebarMenuItem>
-                    <SidebarMenuButton 
-                        onClick={() => onNavigate('discover')} 
-                        isActive={currentView === 'discover'}
-                        tooltip="Discover"
-                    >
-                        <Globe className="size-4" />
-                        <span>Discover</span>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-                
-                <SidebarMenuItem>
-                    <SidebarMenuButton 
-                        onClick={onToggleHistory} 
-                        tooltip="Library"
-                    >
-                        <Library className="size-4" />
-                        <span>Library</span>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-
-                {!user?.is_pro && (
-                  <SidebarMenuItem className="mt-4">
-                     <SidebarMenuButton onClick={onUpgrade} tooltip="Upgrade">
-                        <Sparkles className="size-4 text-[#21808D]" />
-                        <span>Try Pro</span>
-                     </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )}
-            </SidebarMenu>
-        </SidebarGroup>
+      <SidebarContent className="flex flex-col gap-6 mt-2 w-full items-center px-0">
+         <button 
+            onClick={() => onNavigate('home')} 
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${currentView === 'home' ? 'text-primary bg-surface-hover' : 'text-muted hover:text-primary'}`}
+            title="Home"
+         >
+             <Search className="w-5 h-5" />
+         </button>
+         
+         <button 
+            onClick={() => onNavigate('discover')} 
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${currentView === 'discover' ? 'text-primary bg-surface-hover' : 'text-muted hover:text-primary'}`}
+            title="Discover"
+         >
+             <Globe className="w-5 h-5" />
+         </button>
+         
+         <button 
+            onClick={onToggleHistory} 
+            className="w-10 h-10 flex items-center justify-center rounded-lg text-muted hover:text-primary transition-colors"
+            title="Library"
+         >
+             <Library className="w-5 h-5" />
+         </button>
       </SidebarContent>
 
-      <SidebarFooter>
-         <SidebarMenu>
-            {user ? (
-                <SidebarMenuItem>
-                    <SidebarMenuButton onClick={onSignIn} tooltip="Profile">
-                        <div className="flex items-center justify-center size-5 rounded-full bg-[#E5E3DC] text-[#333] text-xs font-medium">
-                            {user.email ? user.email[0].toUpperCase() : 'U'}
-                        </div>
-                        <span className="truncate">{user.full_name || user.email}</span>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            ) : (
-                <SidebarMenuItem>
-                    <SidebarMenuButton onClick={onSignIn} tooltip="Sign Up">
-                        <LogIn className="size-4" />
-                        <span>Sign Up</span>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            )}
-         </SidebarMenu>
+      <SidebarFooter className="mt-auto w-full flex justify-center p-0 pb-4">
+         {user ? (
+            <button onClick={onSignIn} title="Profile" className="w-8 h-8 rounded-full bg-[#E5E3DC] text-[#333] flex items-center justify-center text-xs font-medium">
+                {user.email ? user.email[0].toUpperCase() : 'U'}
+            </button>
+         ) : (
+            <button onClick={onSignIn} title="Sign Up" className="text-muted hover:text-primary">
+                <LogIn className="w-5 h-5" />
+            </button>
+         )}
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   );
 };

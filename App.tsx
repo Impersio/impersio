@@ -1,249 +1,220 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Copy,
-  RotateCcw, 
-  ThumbsUp,
-  ThumbsDown,
-  ArrowUp,
-  Clock,
-  Search,
-  Share,
-  Download,
-  Check,
-  X,
-  FileText,
-  File,
-  Sparkles,
-  Cpu,
-  Globe,
-  Paperclip,
-  Mic,
-  AudioLines,
-  Zap,
-  Atom,
-  ChevronDown,
-  AlignLeft,
-  Image as ImageIcon,
   Plus,
   ArrowRight,
-  Menu,
-  LayoutGrid
+  Sparkles,
+  AlignLeft,
+  MessageSquare,
+  Zap,
+  Check,
+  Search,
+  ArrowUp,
+  Globe,
+  Layers,
+  Image as ImageIcon
 } from 'lucide-react';
-import { streamResponse, orchestrateProSearch, detectIntent } from './services/geminiService';
-import { searchFast, getSuggestions } from './services/googleSearchService';
-import { createConversation, saveMessage } from './services/chatStorageService';
+import { streamResponse, generateCopilotStep } from './services/geminiService';
+import { searchFast } from './services/googleSearchService';
 import { authService } from './services/authService';
-import { Message, SearchResult, ModelOption, User } from './types';
+import { Message, ModelOption, User, CopilotPayload } from './types';
 import { Discover } from './components/Discover';
 import { About } from './components/About';
-import { TimeWidget } from './components/TimeWidget';
-import { StockWidget } from './components/StockWidget';
-import { WeatherWidget } from './components/WeatherWidget';
-import { SlidesWidget } from './components/SlidesWidget';
 import { AuthModal } from './components/AuthModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { HistorySidebar } from './components/HistorySidebar';
 import { AppSidebar } from './components/AppSidebar';
 import { MessageContent } from './components/MessageContent';
-import { ModelSelector } from './components/ModelSelector';
-import { SearchModes } from './components/SearchModes';
-import { ProSearchLogger } from './components/ProSearchLogger';
 import { useTheme } from './hooks/useTheme';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from './components/ui/sidebar';
 import { 
   ImpersioLogo,
-  CoffeeIcon,
-  PenIcon,
-  GraduationCapIcon,
-  TrendingUpIcon,
-  CodeIcon,
-  CPUIcon,
   ClaudeIcon,
   OpenAIIcon,
   GeminiIcon,
-  PerplexityLogo
+  CodeIcon,
+  MetaIcon
 } from './components/Icons';
 
-// Updated models to match the requested interface
 const MODEL_OPTIONS: ModelOption[] = [
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'Fastest reasoning model by Google', icon: GeminiIcon },
+  { id: 'gpt-4', name: 'GPT-4', description: 'Powerful model via Pollinations.AI', icon: OpenAIIcon },
+  { id: 'llama-3.3-70b-groq', name: 'Llama 3.3 (Groq)', description: 'Ultra-fast via Groq', icon: MetaIcon },
+  { id: 'llama-3.3-70b-openrouter', name: 'Llama 3.3 (OR)', description: 'Via OpenRouter', icon: MetaIcon },
   { id: 'sonar', name: 'Sonar', description: 'Fast model by Perplexity', icon: Zap },
   { id: 'claude-3-7-sonnet', name: 'Claude 3.7', description: 'Smart model by Anthropic', icon: ClaudeIcon },
-  { id: 'gpt-4o', name: 'GPT-4o', description: 'Powerful model by OpenAI', icon: OpenAIIcon },
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.5 Flash', description: 'Versatile model by Google', icon: GeminiIcon },
   { id: 'deepseek-coder', name: 'DeepSeek', description: 'Code-focused model', icon: CodeIcon },
 ];
 
-const STORAGE_KEY = 'impersio_chat_state';
+// --- Components ---
 
-interface FeedbackModalProps {
-  type: 'up' | 'down';
-  onClose: () => void;
-  onSubmit: (reasons: string[]) => void;
-}
+const CopilotWidget = ({ 
+    step, 
+    onAnswer 
+}: { 
+    step: CopilotPayload, 
+    onAnswer: (ans: string) => void 
+}) => {
+    const [input, setInput] = useState('');
+    const [selected, setSelected] = useState<string[]>([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-const FeedbackModal: React.FC<FeedbackModalProps> = ({ type, onClose, onSubmit }) => {
-  const [selected, setSelected] = useState<string[]>([]);
-  const options = type === 'up' 
-    ? ['Up to date', 'Accurate', 'Helpful', 'Followed instructions', 'Good sources', 'Other...']
-    : ['Out of date', 'Inaccurate', 'Wrong sources', 'Too long', 'Too short', 'Other...'];
+    const handleSubmit = () => {
+        setIsSubmitting(true);
+        if (step.type === 'selection') {
+            onAnswer(selected.join(', '));
+        } else {
+            onAnswer(input);
+        }
+    };
 
-  const toggleOption = (opt: string) => {
-    setSelected(prev => prev.includes(opt) ? prev.filter(p => p !== opt) : [...prev, opt]);
-  };
+    const handleSkip = () => {
+        setIsSubmitting(true);
+        onAnswer("Skip");
+    };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-       <div className="bg-[#1F1F1F] border border-[#333] rounded-xl p-5 w-full max-w-md m-4 shadow-2xl animate-in zoom-in-95 duration-200">
-          <div className="flex justify-between items-start mb-4">
-             <h3 className="text-[#ECECEC] font-medium text-lg">
-                {type === 'up' ? 'What did you like about this response?' : "What didn't you like about this response?"}
-                <span className="text-[#888] text-sm ml-2 font-normal">(optional)</span>
-             </h3>
-             <button onClick={onClose} className="text-[#888] hover:text-[#ECECEC]">
-               <X className="w-5 h-5" />
-             </button>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3 mb-6">
-             {options.map(opt => (
-                <button
-                  key={opt}
-                  onClick={() => toggleOption(opt)}
-                  className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all text-center border ${
-                    selected.includes(opt) 
-                    ? 'bg-scira-accent/20 text-scira-accent border-scira-accent' 
-                    : 'bg-[#2A2A2A] text-[#BBB] border-transparent hover:bg-[#333] hover:text-white'
-                  }`}
+    return (
+        <div className="w-full max-w-2xl bg-surface border border-border rounded-lg p-6 mb-8 animate-fade-in shadow-sm font-sans">
+            <div className="flex items-center gap-2 mb-3 text-primary font-medium">
+                <Sparkles className="w-4 h-4 text-scira-accent" />
+                <span className="text-sm font-semibold">Copilot</span>
+            </div>
+            
+            <h3 className="text-base text-primary mb-5 leading-relaxed">{step.question}</h3>
+            
+            {step.type === 'text' && (
+                <input 
+                    type="text" 
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="Type your answer..."
+                    className="w-full bg-background border border-border rounded-md px-4 py-2.5 text-primary text-sm focus:outline-none focus:border-scira-accent mb-6 placeholder:text-muted/60"
+                    autoFocus
+                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                />
+            )}
+
+            {step.type === 'selection' && step.options && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                    {step.options.map((opt) => (
+                        <button
+                            key={opt}
+                            onClick={() => setSelected(prev => 
+                                prev.includes(opt) ? prev.filter(p => p !== opt) : [...prev, opt]
+                            )}
+                            className={`flex items-center gap-3 px-3 py-2.5 rounded-md border text-sm text-left transition-all ${
+                                selected.includes(opt) 
+                                    ? 'bg-scira-accent/5 border-scira-accent text-primary' 
+                                    : 'bg-transparent border-transparent hover:bg-surface-hover text-muted hover:text-primary'
+                            }`}
+                        >
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                                selected.includes(opt) ? 'bg-scira-accent border-scira-accent' : 'border-muted'
+                            }`}>
+                                {selected.includes(opt) && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                            <span className="truncate">{opt}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            <div className="flex items-center gap-2">
+                <button 
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className="px-4 py-1.5 bg-[#21808D] hover:bg-[#1A6A76] text-white rounded-md text-sm font-medium transition-colors"
                 >
-                   {opt}
+                    Continue
                 </button>
-             ))}
-          </div>
-          
-          <div className="flex justify-end gap-3">
-             <button onClick={onClose} className="px-4 py-2 text-sm text-[#888] hover:text-white transition-colors">Skip</button>
-             <button 
-                onClick={() => { onSubmit(selected); onClose(); }}
-                className="px-6 py-2 bg-scira-accent hover:bg-scira-accent-hover text-white text-sm font-medium rounded-lg transition-colors"
-             >
-                Submit Feedback
-             </button>
-          </div>
-       </div>
-    </div>
-  );
+                <button 
+                    onClick={handleSkip}
+                    disabled={isSubmitting}
+                    className="px-4 py-1.5 bg-[#F2F2F2] hover:bg-[#E5E5E5] dark:bg-[#333] dark:hover:bg-[#444] text-primary rounded-md text-sm font-medium transition-colors"
+                >
+                    Skip
+                </button>
+            </div>
+        </div>
+    );
 };
 
 interface MessageItemProps {
   msg: Message;
   isLast: boolean;
   isLoading: boolean;
-  onSearch: (q: string) => void;
+  onCopilotAnswer: (ans: string) => void;
+  modelName: string;
 }
 
 const MessageItem: React.FC<MessageItemProps> = ({ 
   msg, 
   isLast, 
-  isLoading, 
+  isLoading,
+  onCopilotAnswer,
+  modelName
 }) => {
-  const [isCopied, setIsCopied] = useState(false);
-  const [feedbackType, setFeedbackType] = useState<'up' | 'down' | null>(null);
-  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
-  const downloadRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (downloadRef.current && !downloadRef.current.contains(event.target as Node)) {
-        setIsDownloadOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(msg.content);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
-  };
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Impersio Chat',
-          text: msg.content,
-        });
-      } catch (err) {
-        console.log('Share failed', err);
-      }
-    } else {
-      handleCopy();
-      alert('Link copied to clipboard');
-    }
-  };
-
-  if (!msg) return null;
-
-  // --- USER MESSAGE ---
+  // User Message (Title Style)
   if (msg.role === 'user') {
     return (
-      <div className="w-full max-w-4xl mx-auto pt-14 pb-4 px-4 md:px-0 animate-fade-in transition-all">
-         <div className="flex items-center gap-3 mb-6 select-none opacity-90">
-            <div className="w-8 h-8 rounded-full bg-surface-hover border border-border/60 flex items-center justify-center text-xs font-medium text-primary/70 shadow-sm">
-               S
-            </div>
-            <div className="flex items-baseline gap-2">
-                <span className="text-sm font-semibold text-primary">You</span>
-            </div>
-         </div>
-         <h1 className="text-3xl md:text-[40px] font-serif font-normal text-primary tracking-tight leading-[1.2] text-pretty">
+      <div className="w-full max-w-3xl mx-auto pt-12 pb-8 px-4 md:px-0 animate-fade-in">
+         <h1 className="text-[32px] md:text-[36px] font-normal text-primary tracking-tight leading-[1.2]">
             {msg.content}
          </h1>
       </div>
     );
   }
 
-  // --- ASSISTANT MESSAGE ---
-  const hasSearch = (msg.sources && msg.sources.length > 0) || (msg.proSearchSteps && msg.proSearchSteps.length > 0);
-  const displayedSources = msg.sources || [];
-  const searchImages = msg.searchImages || [];
+  // Copilot Active State
+  if (msg.isCopilotActive && msg.copilotStep) {
+      return (
+          <div className="w-full max-w-3xl mx-auto px-4 md:px-0 pb-12">
+              <CopilotWidget step={msg.copilotStep} onAnswer={onCopilotAnswer} />
+          </div>
+      );
+  }
 
+  // Assistant Message
   return (
-      <div className="w-full max-w-4xl mx-auto pb-16 px-4 md:px-0 animate-fade-in flex flex-col gap-8 relative group/msg">
+      <div className="w-full max-w-3xl mx-auto pb-16 px-4 md:px-0 animate-fade-in flex flex-col gap-10">
         
-        {feedbackType && (
-            <FeedbackModal 
-                type={feedbackType} 
-                onClose={() => setFeedbackType(null)} 
-                onSubmit={(reasons) => console.log('Feedback:', reasons)} 
-            />
+        {/* Loading State - "Summarizing · Model" */}
+        {isLoading && isLast && !msg.content && (
+             <div className="flex flex-col gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300 mt-2">
+                {msg.sources && msg.sources.length === 0 && (
+                     <div className="flex flex-col gap-2 pl-0 mb-4">
+                         <div className="flex items-center gap-2 text-sm text-[#21808D] font-medium">
+                             <Globe className="w-3.5 h-3.5" />
+                             <span>Searching web</span>
+                         </div>
+                     </div>
+                )}
+                <div className="flex items-center gap-3 text-primary font-medium">
+                     <div className="w-5 h-5 flex items-center justify-center">
+                         <div className="w-2.5 h-2.5 bg-scira-accent rounded-full animate-pulse shadow-[0_0_8px_rgba(33,128,141,0.6)]" />
+                     </div>
+                     <span className="text-lg font-sans text-primary">Summarizing · {modelName}</span>
+                </div>
+             </div>
         )}
 
-        {/* Pro Search Logger */}
-        {msg.proSearchSteps && msg.proSearchSteps.length > 0 && (
-            <div className="mb-2">
-                <ProSearchLogger steps={msg.proSearchSteps} />
-            </div>
-        )}
-
-        {/* 1. SOURCES SECTION (Always at top) */}
-        {hasSearch && displayedSources.length > 0 && (
-            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <div className="flex items-center gap-2 mb-3 text-primary">
-                    <AlignLeft className="w-5 h-5" />
-                    <h3 className="text-lg font-medium font-serif">Sources</h3>
+        {/* 1. QUICK SEARCH (SOURCES) */}
+        {msg.sources && msg.sources.length > 0 && (
+            <div className="animate-in fade-in duration-500">
+                <div className="flex items-center gap-2 mb-4 text-primary">
+                    <Zap className="w-5 h-5 fill-current" />
+                    <h3 className="text-xl font-medium font-sans">Quick Search</h3>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {displayedSources.slice(0, 4).map((source, idx) => (
+                    {msg.sources.slice(0, 4).map((source, idx) => (
                         <a 
                             key={idx}
                             href={source.link}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex flex-col p-3 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-all h-[90px] justify-between group shadow-sm hover:shadow-md"
+                            className="flex flex-col p-3 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-all h-[95px] justify-between group"
                         >
-                            <div className="text-xs font-semibold text-primary line-clamp-2 leading-tight">
+                            <div className="text-[13px] font-medium text-primary line-clamp-2 leading-snug font-sans">
                                 {source.title}
                             </div>
                             <div className="flex items-center gap-2 mt-2">
@@ -255,7 +226,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                                         alt=""
                                     />
                                 </div>
-                                <div className="text-[10px] text-muted truncate font-medium max-w-full">
+                                <div className="text-[11px] text-muted truncate max-w-full">
                                     {source.displayLink}
                                 </div>
                                 <div className="ml-auto text-[10px] text-muted opacity-50 font-mono">
@@ -264,588 +235,313 @@ const MessageItem: React.FC<MessageItemProps> = ({
                             </div>
                         </a>
                     ))}
-                    {displayedSources.length > 4 && (
-                        <button className="flex items-center justify-center p-3 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-all h-[90px] text-xs font-medium text-muted hover:text-primary">
-                             View {displayedSources.length - 4} more
-                        </button>
-                    )}
                 </div>
             </div>
         )}
 
-        {/* 2. MAIN CONTENT AREA (Answer + Side Panel) */}
-        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
-            
-            {/* Left Column: Answer */}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-3 text-primary">
+        {/* 2. ANSWER */}
+        {msg.content && (
+            <div className="min-h-[20px]">
+                <div className="flex items-center gap-2 mb-2 text-primary">
                     <ImpersioLogo className="w-5 h-5 text-scira-accent" />
-                    <h3 className="text-lg font-medium font-serif">Answer</h3>
+                    <h3 className="text-xl font-medium font-sans">Answer</h3>
                 </div>
-
-                {/* Thinking Indicator */}
-                {isLoading && isLast && !msg.content && (!msg.proSearchSteps || msg.proSearchSteps.length === 0) && (
-                    <div className="flex items-center gap-3 mb-6">
-                        <div className="w-2 h-2 bg-scira-accent rounded-full animate-pulse" />
-                        <span className="text-sm text-muted font-medium">Thinking...</span>
-                    </div>
-                )}
-
-                <div className="min-h-[20px]">
-                    <MessageContent 
-                        content={msg.content} 
-                        isStreaming={isLast && isLoading} 
-                        sources={msg.sources}
-                    />
-                </div>
-
-                {/* Widgets */}
-                {msg.widget && (
-                    <div className="mt-8 border-t border-border pt-6">
-                        {msg.widget.type === 'time' && <TimeWidget data={msg.widget.data} />}
-                        {msg.widget.type === 'weather' && <WeatherWidget data={msg.widget.data} />}
-                        {msg.widget.type === 'stock' && <StockWidget data={msg.widget.data} />}
-                        {msg.widget.type === 'slides' && <SlidesWidget data={msg.widget.data} />}
-                    </div>
-                )}
-
-                {/* Action Bar */}
-                {msg.content && (
-                    <div className="flex items-center gap-2 mt-6 border-t border-border pt-4">
-                        <button 
-                            onClick={handleCopy}
-                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all border border-transparent hover:border-border" 
-                        >
-                            {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                            {isCopied ? 'Copied' : 'Copy'}
-                        </button>
-                        
-                        <button 
-                            onClick={handleShare}
-                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all border border-transparent hover:border-border" 
-                        >
-                            <Share className="w-3.5 h-3.5" />
-                            Share
-                        </button>
-
-                        <div className="w-[1px] h-4 bg-border mx-1" />
-                        
-                        <button 
-                            onClick={() => setFeedbackType('up')}
-                            className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all" 
-                        >
-                            <ThumbsUp className="w-3.5 h-3.5" />
-                        </button>
-                        
-                        <button 
-                            onClick={() => setFeedbackType('down')}
-                            className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all" 
-                        >
-                            <ThumbsDown className="w-3.5 h-3.5" />
-                        </button>
-                    </div>
-                )}
+                <MessageContent 
+                    content={msg.content} 
+                    isStreaming={isLast && isLoading} 
+                    sources={msg.sources}
+                />
             </div>
+        )}
 
-            {/* Right Column: Images Side Panel */}
-            {(searchImages.length > 0 || (displayedSources.length > 0 && displayedSources.some(s => s.image))) && (
-                <div className="lg:w-72 xl:w-80 shrink-0 flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-700 delay-200">
-                    
-                    {/* Featured Image (Large) */}
-                    <div className="aspect-[16/10] bg-surface rounded-xl overflow-hidden border border-border relative group cursor-pointer shadow-sm hover:shadow-md transition-all">
-                         <img 
-                            src={searchImages[0] || displayedSources.find(s => s.image)?.image} 
-                            alt="Featured" 
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                         />
-                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                    </div>
-
-                    {/* Small Thumbnails Grid */}
-                    <div className="grid grid-cols-3 gap-2">
-                        {(searchImages.length > 0 ? searchImages.slice(1, 4) : displayedSources.filter(s => s.image).slice(1, 4).map(s => s.image!)).map((img, idx) => (
-                             <div key={idx} className="aspect-square bg-surface rounded-lg overflow-hidden border border-border relative group cursor-pointer hover:shadow-sm">
-                                <img src={img} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
-                             </div>
-                        ))}
-                        {/* View More Placeholder */}
-                        <div className="aspect-square bg-surface-hover rounded-lg border border-border flex flex-col items-center justify-center text-muted hover:text-primary hover:bg-border transition-colors cursor-pointer">
-                            <ImageIcon className="w-4 h-4 mb-1" />
-                            <span className="text-[10px] font-medium">View more</span>
-                        </div>
-                    </div>
-                    
-                    <button className="mt-2 w-full py-2 flex items-center justify-center gap-2 text-xs font-medium text-muted hover:text-primary border border-dashed border-border rounded-lg hover:bg-surface-hover transition-all">
-                        <Plus className="w-3 h-3" />
-                        Search Videos
-                    </button>
+        {/* 3. RELATED QUESTIONS */}
+        {msg.relatedQuestions && msg.relatedQuestions.length > 0 && (
+            <div className="pt-6 border-t border-border mt-2">
+                <div className="flex items-center gap-2 mb-4 text-primary">
+                    <Layers className="w-5 h-5" />
+                    <h3 className="text-xl font-medium font-sans">Related</h3>
                 </div>
-            )}
-        </div>
+                <div className="flex flex-col gap-0">
+                    {msg.relatedQuestions.map((q, idx) => (
+                        <div 
+                           key={idx} 
+                           className="flex items-center justify-between py-3.5 hover:bg-surface-hover cursor-pointer border-b border-border/40 group transition-colors px-1"
+                           onClick={() => { /* Handle click in parent or context */ }}
+                        >
+                            <span className="text-primary/90 font-medium text-[16px]">{q}</span>
+                            <Plus className="w-5 h-5 text-muted group-hover:text-primary transition-transform group-hover:rotate-90" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
       </div>
   );
 };
 
 export default function App() {
-  const [messages, setMessages] = useState<Message[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        return parsed.messages || [];
-      }
-    } catch(e) {}
-    return [];
-  });
-
-  const [hasSearched, setHasSearched] = useState(() => {
-    try {
-       const saved = localStorage.getItem(STORAGE_KEY);
-       if (saved) return JSON.parse(saved).hasSearched || false;
-    } catch(e) {}
-    return false;
-  });
-
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [selectedModel, setSelectedModel] = useState<ModelOption>(MODEL_OPTIONS[0]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDeepMode, setIsDeepMode] = useState(false); // Deep Research State
+  const [isCopilotMode, setIsCopilotMode] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<ModelOption>(MODEL_OPTIONS[0]);
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [view, setView] = useState<'home' | 'discover' | 'about'>('home');
-  const [attachments, setAttachments] = useState<string[]>([]);
-  const [isMobile, setIsMobile] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Modals
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [view, setView] = useState<'home' | 'discover' | 'about'>('home');
+  const [user, setUser] = useState<User | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
-  const [isSearchModesOpen, setIsSearchModesOpen] = useState(false);
-  const [searchMode, setSearchMode] = useState('web');
 
   const { theme, setTheme } = useTheme();
 
-  // Load user on mount and check model permission
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    
-    // Enforce model lock if not pro
-    if (!currentUser?.is_pro && selectedModel.id !== MODEL_OPTIONS[0].id) {
-        setSelectedModel(MODEL_OPTIONS[0]);
-    }
+    setUser(authService.getCurrentUser());
   }, []);
-
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (query.trim().length < 2) {
-        setSuggestions([]);
-        return;
-      }
-      const newSuggestions = await getSuggestions(query);
-      setSuggestions(newSuggestions);
-    };
-
-    const debounce = setTimeout(fetchSuggestions, 300);
-    return () => clearTimeout(debounce);
-  }, [query]);
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        messages,
-        hasSearched
-      }));
-    }
-  }, [messages, hasSearched]);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.max(24, Math.min(textareaRef.current.scrollHeight, 160))}px`;
-    }
-  }, [query]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
         messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages.length]); 
+  }, [messages.length, messages[messages.length-1]?.content]);
 
-  const cycleTheme = () => {
-    setTheme(prev => {
-      if (prev === 'system') return 'light';
-      if (prev === 'light') return 'dark';
-      return 'system';
-    });
-  };
-
+  // Handle Search Initiation
   const handleSearch = async (overrideQuery?: string) => {
     const finalQuery = overrideQuery || query;
-    setSuggestions([]);
-
-    if ((!finalQuery.trim() && attachments.length === 0) || isLoading) return;
+    if (!finalQuery.trim() || isLoading) return;
 
     setIsLoading(true);
     setQuery(''); 
-    const currentAttachments = [...attachments];
-    setAttachments([]);
+    
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
-    let currentConversationId = conversationId;
+    if (!hasSearched) setHasSearched(true);
 
-    if (!hasSearched) {
-      setHasSearched(true);
-      const title = finalQuery.length > 30 ? finalQuery.substring(0, 30) + "..." : finalQuery || "Search";
-      const newId = await createConversation(title, user?.id || 'guest');
-      if (newId) {
-        setConversationId(newId);
-        currentConversationId = newId;
-      }
-    }
-    
-    setMessages(prev => [...prev, { 
-        role: 'user', 
-        content: finalQuery,
-        images: currentAttachments 
-    }]);
+    // Add User Message
+    const userMsg: Message = { role: 'user', content: finalQuery };
+    setMessages(prev => [...prev, userMsg]);
 
-    if (currentConversationId) {
-        await saveMessage(currentConversationId, 'user', finalQuery, { images: currentAttachments });
-    }
+    // Add Placeholder Assistant Message
+    setMessages(prev => [...prev, { role: 'assistant', content: '', sources: [] }]);
 
-    const modelId = selectedModel.id;
-    
     try {
-        setMessages(prev => [...prev, { 
-            role: 'assistant', 
-            content: '', 
-            sources: [], 
-            searchImages: [],
-            proSearchSteps: []
-        }]);
-
-        // --- INTENT DETECTION ---
-        // Automatically determine if Pro Search (Deep Research) is needed
-        let executeProSearch = isDeepMode;
-        let needsSearch = true; // Default
-
-        if (!isDeepMode) {
-             const intent = await detectIntent(finalQuery);
-             needsSearch = intent.search;
-             executeProSearch = intent.isPro;
+        // --- COPILOT LOGIC ---
+        if (isCopilotMode) {
+             const copilotStep = await generateCopilotStep(finalQuery);
+             
+             if (copilotStep) {
+                 // Update last message to be a Copilot interaction
+                 setMessages(prev => {
+                     const newMsgs = [...prev];
+                     const last = newMsgs[newMsgs.length - 1];
+                     last.isCopilotActive = true;
+                     last.copilotStep = copilotStep;
+                     // Store original query in content for now or separate state
+                     last.content = finalQuery; // Keep track of what we are solving
+                     return newMsgs;
+                 });
+                 setIsLoading(false); // Stop generic loading, waiting for user input
+                 return;
+             }
         }
 
-        // --- DEEP RESEARCH LOGIC ---
-        if (executeProSearch) {
-            await orchestrateProSearch(
-                finalQuery,
-                modelId,
-                messages,
-                (steps) => {
-                    setMessages(prev => {
-                        const newMessages = [...prev];
-                        const lastIndex = newMessages.length - 1;
-                        if (newMessages[lastIndex].role === 'assistant') {
-                            newMessages[lastIndex] = {
-                                ...newMessages[lastIndex],
-                                proSearchSteps: steps
-                            };
-                        }
-                        return newMessages;
-                    });
-                },
-                (content, sources) => {
-                    setMessages(prev => {
-                        const newMessages = [...prev];
-                        const lastIndex = newMessages.length - 1;
-                         if (newMessages[lastIndex].role === 'assistant') {
-                            newMessages[lastIndex] = {
-                                ...newMessages[lastIndex],
-                                content: content,
-                                sources: sources
-                            };
-                        }
-                        return newMessages;
-                    });
-                }
-            );
-        } 
-        // --- STANDARD SEARCH LOGIC ---
-        else {
-            let allSources: SearchResult[] = [];
-            let allImages: string[] = [];
-            
-            if (needsSearch) {
-                 const searchResult = await searchFast(finalQuery);
-                 if (searchResult && searchResult.results) {
-                     allSources = searchResult.results;
-                     allImages = searchResult.images || [];
-                 }
-                 // Deduplicate sources
-                 allSources = allSources.filter((s, index, self) => 
-                     index === self.findIndex((t) => (t.link === s.link))
-                 );
-            }
-
-            await streamResponse(
-                finalQuery,
-                modelId,
-                messages.slice(-6),
-                allSources,
-                currentAttachments,
-                false,
-                isMobile,
-                (chunk) => {
-                        setMessages(prev => {
-                        if (!prev || prev.length === 0) return prev;
-                        const newMessages = [...prev];
-                        const lastIndex = newMessages.length - 1;
-                        if (newMessages[lastIndex].role === 'assistant') {
-                            newMessages[lastIndex] = { 
-                                ...newMessages[lastIndex], 
-                                content: chunk, 
-                                sources: allSources,
-                                searchImages: allImages
-                            };
-                        }
-                        return newMessages;
-                    });
-                },
-                (widget) => {
-                        setMessages(prev => {
-                        const newMessages = [...prev];
-                        const lastIndex = newMessages.length - 1;
-                        newMessages[lastIndex].widget = widget;
-                        return newMessages;
-                    });
-                },
-                (related) => {
-                    setMessages(prev => {
-                        const newMessages = [...prev];
-                        const lastIndex = newMessages.length - 1;
-                        newMessages[lastIndex].relatedQuestions = related;
-                        return newMessages;
-                    });
-                }
-            );
-        }
+        // --- STANDARD SEARCH ---
+        await executeSearch(finalQuery, messages);
 
     } catch (e) {
-      console.error("Search failed", e);
-      const errorMessage = "Sorry, I encountered an error.";
+        console.error(e);
+        setIsLoading(false);
+    }
+  };
+
+  const executeSearch = async (searchQuery: string, history: Message[]) => {
+      setIsLoading(true);
+      
+      const { results } = await searchFast(searchQuery);
+      
+      // Update sources immediately
       setMessages(prev => {
-          if (!prev || prev.length === 0) return prev;
-          const newMessages = [...prev];
-          const lastMsg = newMessages[newMessages.length - 1];
-          if (lastMsg && lastMsg.role === 'assistant' && !lastMsg.content) {
-              newMessages[newMessages.length - 1] = { ...lastMsg, content: errorMessage };
-          } else {
-             newMessages.push({ role: 'assistant', content: errorMessage });
-          }
-          return newMessages;
+          const newMsgs = [...prev];
+          const last = newMsgs[newMsgs.length - 1];
+          last.sources = results;
+          last.isCopilotActive = false; 
+          return newMsgs;
       });
-    } finally {
+
+      await streamResponse(
+          searchQuery,
+          selectedModel.id, // Use selected model
+          history.slice(-6),
+          results,
+          [],
+          false,
+          false,
+          (chunk) => {
+              setMessages(prev => {
+                  const newMsgs = [...prev];
+                  const last = newMsgs[newMsgs.length - 1];
+                  last.content = chunk;
+                  return newMsgs;
+              });
+          },
+          () => {},
+          (related) => {
+              setMessages(prev => {
+                  const newMsgs = [...prev];
+                  const last = newMsgs[newMsgs.length - 1];
+                  last.relatedQuestions = related;
+                  return newMsgs;
+              });
+          },
+          undefined,
+          undefined,
+          (sources) => {
+              setMessages(prev => {
+                  const newMsgs = [...prev];
+                  const last = newMsgs[newMsgs.length - 1];
+                  if (!last.sources || last.sources.length === 0) {
+                      last.sources = sources;
+                  }
+                  return newMsgs;
+              });
+          }
+      );
+      
       setIsLoading(false);
-    }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSearch();
-    }
+  const handleCopilotAnswer = async (answer: string) => {
+      const currentMsgs = [...messages];
+      const lastMsg = currentMsgs[currentMsgs.length - 1];
+      const originalQuery = lastMsg.content; 
+
+      const refinedQuery = `${originalQuery} (User Clarification: ${answer})`;
+      
+      setMessages(prev => {
+          const newMsgs = [...prev];
+          const last = newMsgs[newMsgs.length - 1];
+          last.isCopilotActive = false; 
+          last.content = ''; 
+          return newMsgs;
+      });
+
+      await executeSearch(refinedQuery, currentMsgs);
   };
 
-  const handleNewChat = () => {
-     setHasSearched(false);
-     setMessages([]);
-     setConversationId(null);
-     setQuery('');
-     setAttachments([]);
-     setView('home');
-     setSuggestions([]);
-     setIsDeepMode(false);
-     localStorage.removeItem(STORAGE_KEY); 
-  };
-
-  const renderInputBar = (isInitial: boolean) => (
-    <div className={`w-full ${isInitial ? 'max-w-2xl' : 'max-w-3xl'} mx-auto relative z-30 transition-all duration-500`}>
-      <div className={`
-        relative flex flex-col w-full bg-surface
-        rounded-[26px]
-        border border-border
-        shadow-[0_0_15px_rgba(0,0,0,0.03)]
-        transition-all duration-300
-        overflow-visible
-        group
-        ${isInitial ? 'min-h-[140px]' : ''}
-      `}>
-         <div className="flex flex-col px-4 pt-4 pb-2 h-full">
+  const renderInputBar = (isInitial: boolean) => {
+    return (
+        <div className={`w-full max-w-3xl mx-auto relative z-30 ${isInitial ? '' : 'pb-6'}`}>
+          <div className={`
+            relative flex items-center w-full bg-surface
+            ${isInitial ? 'rounded-xl border border-border min-h-[120px] p-4 flex-col' : 'rounded-full border border-border px-4 py-2.5 shadow-sm hover:shadow-md'}
+            transition-all duration-300
+            focus-within:ring-1 focus-within:ring-border/50
+          `}>
              <textarea
                 ref={textareaRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={isInitial ? "Ask Anything" : "Reply..."}
-                className={`w-full bg-transparent text-primary placeholder:text-muted/40 text-[20px] font-light px-1 focus:outline-none resize-none overflow-hidden mb-2 font-sans`}
-                style={{ minHeight: '44px' }}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSearch();
+                    }
+                }}
+                placeholder={isInitial ? "Ask anything..." : "Ask follow-up..."}
+                className={`w-full bg-transparent text-primary placeholder:text-muted/50 font-normal focus:outline-none resize-none overflow-hidden font-sans leading-relaxed
+                    ${isInitial ? 'text-[18px] mb-auto px-1' : 'text-[16px] flex-1 py-1'}
+                `}
+                style={{ minHeight: isInitial ? '28px' : '24px' }}
                 rows={1}
-                autoFocus={isInitial && !isMobile}
+                autoFocus={isInitial}
               />
               
-              <div className={`flex items-center justify-between mt-auto pt-2 ${isInitial ? 'absolute bottom-3 left-3 right-3' : ''}`}>
-                 <div className="flex items-center gap-1">
-                     <button 
-                        onClick={() => setIsDeepMode(false)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors border 
-                           ${!isDeepMode 
-                             ? 'bg-transparent text-scira-accent border-border/60 shadow-[0_1px_2px_rgba(0,0,0,0.05)]' 
-                             : 'text-muted/60 border-transparent hover:text-primary'}`}
-                     >
-                        <Search className="w-4 h-4" strokeWidth={2.5} />
-                        <span>Search</span>
-                     </button>
-                     <button 
-                        onClick={() => setIsDeepMode(true)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium transition-colors border
-                           ${isDeepMode 
-                             ? 'bg-transparent text-scira-accent border-border shadow-sm' 
-                             : 'text-muted/60 border-transparent hover:text-primary'}`}
-                     >
-                        <Atom className="w-4 h-4" strokeWidth={2.5} />
-                        <span>Research</span>
-                     </button>
-                 </div>
+              {/* Controls */}
+              <div className={`flex items-center gap-4 ${isInitial ? 'w-full justify-between mt-auto' : 'ml-2'}`}>
+                  {isInitial && (
+                      <div className="flex items-center gap-4 text-muted text-sm font-medium">
+                         <button className="flex items-center gap-2 hover:text-primary transition-colors">
+                            <Search className="w-4 h-4" /> Focus
+                         </button>
+                         <button className="flex items-center gap-2 hover:text-primary transition-colors">
+                             <Plus className="w-4 h-4 rounded-full border border-current p-0.5" /> File
+                         </button>
+                      </div>
+                  )}
 
-                 <div className="flex items-center gap-3">
-                     {/* Model Selector on Chip/CPU Icon */}
-                     <ModelSelector
-                        selectedModel={selectedModel}
-                        models={MODEL_OPTIONS}
-                        onSelect={setSelectedModel}
-                        isOpen={isModelSelectorOpen}
-                        onToggle={() => setIsModelSelectorOpen(!isModelSelectorOpen)}
-                        isPro={!!user?.is_pro}
-                        onOpenProModal={() => user ? setIsSubscriptionModalOpen(true) : setIsAuthModalOpen(true)}
-                        trigger={
-                           <button className="text-muted/60 hover:text-primary transition-colors" title="Model">
-                              <Cpu className="w-5 h-5" strokeWidth={2} />
-                           </button>
-                        }
-                     />
-
-                     {/* Search Modes on Globe Icon */}
-                     <div className="relative flex items-center">
-                        <button 
-                          onClick={() => setIsSearchModesOpen(!isSearchModesOpen)}
-                          className={`text-muted/60 hover:text-primary transition-colors ${isSearchModesOpen ? 'text-primary' : ''}`}
-                          title="Focus"
+                  <div className="flex items-center gap-3 ml-auto">
+                        <div 
+                            className="flex items-center gap-2 cursor-pointer group select-none" 
+                            onClick={() => setIsCopilotMode(!isCopilotMode)}
                         >
-                           <Globe className="w-5 h-5" strokeWidth={2} />
+                            <div className={`
+                                w-8 h-4.5 rounded-full relative transition-colors duration-200 ease-in-out
+                                ${isCopilotMode ? 'bg-[#21808D]' : 'bg-border'}
+                            `}>
+                                <div className={`
+                                    absolute top-0.5 left-0.5 w-3.5 h-3.5 rounded-full bg-white transition-transform duration-200 ease-in-out shadow-sm
+                                    ${isCopilotMode ? 'translate-x-3.5' : 'translate-x-0'}
+                                `} />
+                            </div>
+                            <span className={`text-sm font-medium ${isCopilotMode ? 'text-[#21808D]' : 'text-muted'} ${!isInitial && 'hidden sm:block'}`}>Copilot</span>
+                        </div>
+
+                        {/* Divider */}
+                        {!isInitial && <div className="h-5 w-[1px] bg-border mx-1"></div>}
+                        
+                        <button 
+                            onClick={() => handleSearch()}
+                            className={`flex items-center justify-center rounded-full transition-all duration-200 
+                                ${isInitial ? 'w-8 h-8 bg-[#21808D] text-white' : 'w-8 h-8 bg-[#21808D] text-white hover:opacity-90'}
+                                ${!query.trim() ? 'opacity-50 cursor-not-allowed' : 'opacity-100'}
+                            `}
+                            disabled={!query.trim()}
+                        >
+                            {isInitial ? <ArrowRight className="w-4 h-4" /> : <ArrowUp className="w-5 h-5" />}
                         </button>
-                        <SearchModes 
-                           activeMode={searchMode}
-                           onSelect={setSearchMode}
-                           isOpen={isSearchModesOpen}
-                           onClose={() => setIsSearchModesOpen(false)}
-                        />
-                     </div>
-
-                     <button className="text-muted/60 hover:text-primary transition-colors" title="Attach">
-                         <Paperclip className="w-5 h-5" strokeWidth={2} />
-                     </button>
-
-                     <div className="w-px h-5 bg-border mx-1"></div> {/* Separator */}
-
-                     <button className="bg-surface-hover/50 hover:bg-surface-hover text-primary p-2 rounded-full transition-colors" title="Voice">
-                         <Mic className="w-5 h-5" strokeWidth={2} />
-                     </button>
-                     
-                     <button 
-                        onClick={() => handleSearch()}
-                        disabled={!query.trim() && attachments.length === 0}
-                        className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 
-                            bg-scira-accent text-white hover:opacity-90 shadow-md ml-2`}
-                     >
-                        {query.trim() ? <ArrowUp className="w-5 h-5" strokeWidth={3} /> : <AudioLines className="w-5 h-5" />}
-                     </button>
-                 </div>
+                  </div>
               </div>
-         </div>
-          
-          {suggestions.length > 0 && query.trim().length > 0 && (
-             <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-border rounded-xl shadow-2xl overflow-hidden z-50 animate-fade-in mx-0 p-1">
-                {suggestions.map((suggestion, index) => (
-                   <button
-                      key={index}
-                      onClick={() => {
-                         setQuery(suggestion);
-                         handleSearch(suggestion);
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-surface-hover rounded-lg transition-colors group"
-                   >
-                      <Search className="w-4 h-4 text-muted group-hover:text-primary transition-colors" />
-                      <span className="text-sm font-medium text-primary font-sans">{suggestion}</span>
-                   </button>
-                ))}
-             </div>
-          )}
-      </div>
-    </div>
-  );
+          </div>
+        </div>
+    );
+  };
 
   return (
     <SidebarProvider>
-      <div className={`min-h-screen bg-background text-primary font-sans selection:bg-scira-accent/20 flex flex-row overflow-hidden transition-colors duration-300 w-full`}>
+      <div className={`min-h-screen bg-background text-primary font-sans selection:bg-[#21808D]/20 flex flex-row overflow-hidden w-full`}>
         <AppSidebar 
           currentView={view} 
           onNavigate={setView}
-          onNewChat={handleNewChat}
+          onNewChat={() => { setMessages([]); setHasSearched(false); }}
           onToggleHistory={() => setIsHistoryOpen(true)}
           onSignIn={() => setIsAuthModalOpen(true)}
-          onUpgrade={() => {
-              if (user) {
-                  setIsSubscriptionModalOpen(true);
-              } else {
-                  setIsAuthModalOpen(true);
-              }
-          }}
+          onUpgrade={() => setIsSubscriptionModalOpen(true)}
           user={user}
           theme={theme}
-          onToggleTheme={cycleTheme}
+          onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
         />
 
         <HistorySidebar
           isOpen={isHistoryOpen}
           onClose={() => setIsHistoryOpen(false)}
-          onSelectChat={(id, title) => {}}
-          onNewChat={handleNewChat}
-          userId={user?.id}
-          onSignIn={() => { setIsHistoryOpen(false); setIsAuthModalOpen(true); }}
-          onOpenAbout={() => { setIsHistoryOpen(false); setView('about'); }}
+          onSelectChat={() => {}}
+          onNewChat={() => { setMessages([]); setHasSearched(false); }}
+          userId={user?.id || ''}
+          onSignIn={() => setIsAuthModalOpen(true)}
+          onOpenAbout={() => setView('about')}
           theme={theme}
-          onToggleTheme={cycleTheme}
+          onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
         />
 
         <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
         <SubscriptionModal isOpen={isSubscriptionModalOpen} onClose={() => setIsSubscriptionModalOpen(false)} />
 
         <SidebarInset>
-           {/* Main Container constrained to SidebarInset area */}
            <div className="absolute inset-0 flex flex-col min-w-0 overflow-hidden">
-             {/* Mobile Sidebar Trigger */}
              <div className="md:hidden fixed top-3 left-3 z-50">
                  <SidebarTrigger />
              </div>
@@ -857,17 +553,11 @@ export default function App() {
                 <div className="flex-1 flex flex-col h-full relative">
                   {!hasSearched ? (
                     <div className="flex flex-col items-center justify-center p-4 w-full h-full animate-fade-in max-w-4xl mx-auto">
-                        
-                        {/* Logo Area */}
-                        <div className="w-full max-w-2xl mb-10 flex flex-col items-center text-center">
-                          <div className="flex items-center gap-4 mb-2">
-                             <ImpersioLogo className="w-14 h-14 text-scira-accent" />
-                             <span className="text-4xl md:text-5xl font-medium text-primary font-serif tracking-tight">
-                                Impersio
-                             </span>
-                          </div>
+                        <div className="w-full max-w-2xl mb-8 flex flex-col items-center text-center">
+                             <h1 className="text-[40px] md:text-[44px] font-normal text-primary font-serif tracking-tight text-[#111] dark:text-[#EEE]">
+                                Where knowledge begins
+                             </h1>
                         </div>
-
                         {renderInputBar(true)}
                     </div>
                   ) : (
@@ -880,17 +570,15 @@ export default function App() {
                                   msg={msg}
                                   isLast={idx === messages.length - 1}
                                   isLoading={isLoading}
-                                  onSearch={handleSearch}
+                                  onCopilotAnswer={handleCopilotAnswer}
+                                  modelName={selectedModel.name}
                                 />
                             ))}
                             <div ref={messagesEndRef} />
                           </div>
                         </div>
-                        
-                        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-background via-background to-transparent pt-12 pb-8 z-20 px-4">
-                          <div className="max-w-3xl mx-auto">
+                        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-background via-background to-transparent pt-12 pb-0 z-20 px-4">
                               {renderInputBar(false)}
-                          </div>
                         </div>
                     </div>
                   )}

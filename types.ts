@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export interface SearchMode {
@@ -24,64 +23,49 @@ export interface SearchResult {
   image?: string;
 }
 
-export interface TimeWidgetData {
-  time: string;
-  date: string;
-  location: string;
-  timezone: string;
-}
-
-export interface WeatherWidgetData {
-  location: string;
-}
-
-export interface StockWidgetData {
-  symbol: string;
-}
-
-export interface SlideChart {
-  type: 'bar';
-  data: { label: string; value: number }[];
-  title?: string;
-  xAxisLabel?: string;
-  yAxisLabel?: string;
-}
-
-export interface Slide {
-  title: string;
-  content: string[];
-  chart?: SlideChart;
-  image?: string; // Image URL for the slide
+export interface WidgetData {
+  type: 'time' | 'weather' | 'stock' | 'slides';
+  data: any; 
 }
 
 export interface SlidesWidgetData {
   title: string;
-  slides: Slide[];
-}
-
-export interface WidgetData {
-  type: 'time' | 'weather' | 'stock' | 'slides';
-  data: any; 
+  slides: {
+    title: string;
+    content: string[];
+    image?: string;
+    chart?: {
+        title?: string;
+        data: { label: string; value: number }[];
+    };
+  }[];
 }
 
 export interface ProSearchStep {
   id: string;
   title: string;
   status: 'pending' | 'in-progress' | 'completed';
-  queries: string[];
-  sources: SearchResult[];
-  finding?: string; // The "Thought" or summary of this step
+  queries?: string[];
+  finding?: string;
+}
+
+export interface CopilotPayload {
+  question: string;
+  type: 'text' | 'selection';
+  options?: string[];
+  answer?: string | string[]; 
 }
 
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
   sources?: SearchResult[];
-  images?: string[]; // User uploaded images
-  searchImages?: string[]; // Images found via search
-  widget?: WidgetData;
+  images?: string[]; 
   relatedQuestions?: string[];
-  proSearchSteps?: ProSearchStep[];
+  
+  // Copilot specific
+  isCopilotActive?: boolean;
+  copilotStep?: CopilotPayload;
 }
 
 export interface User {
@@ -90,4 +74,5 @@ export interface User {
   full_name?: string;
   avatar_url?: string;
   is_pro?: boolean;
+  pro_expiry?: string;
 }
