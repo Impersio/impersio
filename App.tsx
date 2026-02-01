@@ -26,7 +26,8 @@ import {
   Image as ImageIcon,
   Plus,
   ArrowRight,
-  Menu
+  Menu,
+  LayoutGrid
 } from 'lucide-react';
 import { streamResponse, orchestrateProSearch, detectIntent } from './services/geminiService';
 import { searchFast, getSuggestions } from './services/googleSearchService';
@@ -65,7 +66,7 @@ import {
 
 // Updated models to match the requested interface
 const MODEL_OPTIONS: ModelOption[] = [
-  { id: 'sonar', name: 'Sonar', description: 'Fast model by Perplexity', icon: Zap }, // Using Zap as placeholder for Sonar
+  { id: 'sonar', name: 'Sonar', description: 'Fast model by Perplexity', icon: Zap },
   { id: 'claude-3-7-sonnet', name: 'Claude 3.7', description: 'Smart model by Anthropic', icon: ClaudeIcon },
   { id: 'gpt-4o', name: 'GPT-4o', description: 'Powerful model by OpenAI', icon: OpenAIIcon },
   { id: 'gemini-2.0-flash', name: 'Gemini 2.5 Flash', description: 'Versatile model by Google', icon: GeminiIcon },
@@ -145,7 +146,6 @@ const MessageItem: React.FC<MessageItemProps> = ({
   isLast, 
   isLoading, 
 }) => {
-  const [activeTab, setActiveTab] = useState<'answer' | 'images' | 'sources'>('answer');
   const [isCopied, setIsCopied] = useState(false);
   const [feedbackType, setFeedbackType] = useState<'up' | 'down' | null>(null);
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
@@ -183,28 +183,21 @@ const MessageItem: React.FC<MessageItemProps> = ({
     }
   };
 
-  const handleDownload = (format: 'pdf' | 'md' | 'docx') => {
-      const content = msg.content;
-      // ... existing download logic ...
-      setIsDownloadOpen(false);
-  };
-
   if (!msg) return null;
 
-  // --- USER MESSAGE (HEADER STYLE) ---
+  // --- USER MESSAGE ---
   if (msg.role === 'user') {
     return (
-      <div className="w-full max-w-3xl mx-auto pt-8 px-4 animate-fade-in">
-         {/* Metadata Row */}
-         <div className="flex items-center gap-3 mb-4 text-muted">
-            <div className="w-8 h-8 rounded-full bg-[#E5E5E5] dark:bg-[#333] flex items-center justify-center text-sm font-medium text-primary">
+      <div className="w-full max-w-4xl mx-auto pt-14 pb-4 px-4 md:px-0 animate-fade-in transition-all">
+         <div className="flex items-center gap-3 mb-6 select-none opacity-90">
+            <div className="w-8 h-8 rounded-full bg-surface-hover border border-border/60 flex items-center justify-center text-xs font-medium text-primary/70 shadow-sm">
                S
             </div>
-            <span className="text-sm font-medium text-primary">You</span>
-            <span className="text-xs text-muted/60">• A few seconds ago</span>
+            <div className="flex items-baseline gap-2">
+                <span className="text-sm font-semibold text-primary">You</span>
+            </div>
          </div>
-         {/* Query Title */}
-         <h1 className="text-3xl md:text-4xl font-serif font-medium text-primary tracking-tight leading-tight">
+         <h1 className="text-3xl md:text-[40px] font-serif font-normal text-primary tracking-tight leading-[1.2] text-pretty">
             {msg.content}
          </h1>
       </div>
@@ -217,7 +210,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
   const searchImages = msg.searchImages || [];
 
   return (
-      <div className="w-full max-w-3xl mx-auto pb-8 px-4 animate-fade-in flex flex-col gap-2 relative group/msg mt-6">
+      <div className="w-full max-w-4xl mx-auto pb-16 px-4 md:px-0 animate-fade-in flex flex-col gap-8 relative group/msg">
         
         {feedbackType && (
             <FeedbackModal 
@@ -227,227 +220,164 @@ const MessageItem: React.FC<MessageItemProps> = ({
             />
         )}
 
-        {/* Pro Search Status */}
+        {/* Pro Search Logger */}
         {msg.proSearchSteps && msg.proSearchSteps.length > 0 && (
-            <div className="mb-4">
+            <div className="mb-2">
                 <ProSearchLogger steps={msg.proSearchSteps} />
             </div>
         )}
 
-        {/* Tabs - Styled like Perplexity */}
-        <div className="flex items-center gap-6 border-b border-border/40 mb-6">
-            <button 
-                onClick={() => setActiveTab('answer')}
-                className={`flex items-center gap-2 pb-2.5 text-sm font-medium transition-all relative ${
-                    activeTab === 'answer' ? 'text-primary' : 'text-muted hover:text-primary'
-                }`}
-            >
-                <Sparkles className="w-4 h-4" />
-                Answer
-                {activeTab === 'answer' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />}
-            </button>
-            
-            {hasSearch && (
-                <>
-                    <button 
-                        onClick={() => setActiveTab('images')}
-                        className={`flex items-center gap-2 pb-2.5 text-sm font-medium transition-all relative ${
-                            activeTab === 'images' ? 'text-primary' : 'text-muted hover:text-primary'
-                        }`}
-                    >
-                        <ImageIcon className="w-4 h-4" />
-                        Images
-                        {activeTab === 'images' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />}
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('sources')}
-                        className={`flex items-center gap-2 pb-2.5 text-sm font-medium transition-all relative ${
-                            activeTab === 'sources' ? 'text-primary' : 'text-muted hover:text-primary'
-                        }`}
-                    >
-                        <AlignLeft className="w-4 h-4" />
-                        Sources
-                        {displayedSources.length > 0 && (
-                            <span className="bg-surface-hover text-muted text-[10px] py-0.5 px-1.5 rounded-full border border-border">
-                                {displayedSources.length}
-                            </span>
-                        )}
-                        {activeTab === 'sources' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />}
-                    </button>
-                </>
-            )}
-        </div>
-
-        {/* Tab Content */}
-        <div className="flex flex-col gap-4">
-            
-            {activeTab === 'answer' && (
-                <>
-                    {/* Sources Grid (Compact) */}
-                    {hasSearch && displayedSources.length > 0 && (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-                            {displayedSources.slice(0, 4).map((source, idx) => (
-                                <a 
-                                    key={idx}
-                                    href={source.link}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex flex-col p-3 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-all h-[90px] justify-between group shadow-sm hover:shadow-md"
-                                >
-                                    <div className="text-xs font-semibold text-primary line-clamp-2 leading-tight">
-                                        {source.title}
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <div className="w-4 h-4 rounded-full bg-border/50 overflow-hidden shrink-0">
-                                            <img 
-                                                src={`https://www.google.com/s2/favicons?domain=${new URL(source.link).hostname}&sz=32`}
-                                                className="w-full h-full object-cover opacity-80"
-                                                onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
-                                                alt=""
-                                            />
-                                        </div>
-                                        <div className="text-[10px] text-muted truncate font-medium max-w-full">
-                                            {source.displayLink}
-                                        </div>
-                                    </div>
-                                </a>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Thinking Indicator */}
-                    {isLoading && isLast && !msg.content && (!msg.proSearchSteps || msg.proSearchSteps.length === 0) && (
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-2 h-2 bg-scira-accent rounded-full animate-pulse" />
-                            <span className="text-sm text-muted font-medium">Thinking...</span>
-                        </div>
-                    )}
-
-                    {/* Main Answer Content */}
-                    <div className="min-h-[20px]">
-                        {/* Answer Header */}
-                        {msg.content && (
-                            <div className="flex items-center gap-2 mb-4">
-                                <ImpersioLogo className="w-6 h-6 text-scira-accent" />
-                                <span className="text-lg font-serif font-medium text-primary">Answer</span>
-                            </div>
-                        )}
-                        
-                        <MessageContent 
-                            content={msg.content} 
-                            isStreaming={isLast && isLoading} 
-                            sources={msg.sources}
-                        />
-                    </div>
-
-                    {/* Widgets */}
-                    {msg.widget && (
-                        <div className="mt-8 border-t border-border pt-6">
-                            {msg.widget.type === 'time' && <TimeWidget data={msg.widget.data} />}
-                            {msg.widget.type === 'weather' && <WeatherWidget data={msg.widget.data} />}
-                            {msg.widget.type === 'stock' && <StockWidget data={msg.widget.data} />}
-                            {msg.widget.type === 'slides' && <SlidesWidget data={msg.widget.data} />}
-                        </div>
-                    )}
-                </>
-            )}
-
-            {activeTab === 'images' && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    {searchImages.length > 0 ? (
-                        searchImages.slice(0, 9).map((img, idx) => (
-                            <div key={idx} className="aspect-[4/3] bg-surface rounded-xl overflow-hidden border border-border relative group cursor-pointer hover:shadow-lg transition-all">
-                                <img src={img} alt="Result" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                            </div>
-                        ))
-                    ) : displayedSources.length > 0 ? (
-                         // Fallback to source images
-                         displayedSources.slice(0, 9).filter(s => s.image).map((s, idx) => (
-                            <div key={idx} className="aspect-[4/3] bg-surface rounded-xl overflow-hidden border border-border relative group cursor-pointer hover:shadow-lg transition-all">
-                                <img src={s.image} alt={s.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <p className="text-[11px] text-white truncate font-medium">{s.title}</p>
-                                    <p className="text-[9px] text-white/70 truncate">{s.displayLink}</p>
-                                </div>
-                            </div>
-                         ))
-                    ) : (
-                        <div className="col-span-full py-16 text-center text-muted border border-dashed border-border rounded-xl">
-                            <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                            <p>No images found for this search.</p>
-                        </div>
-                    )}
+        {/* 1. SOURCES SECTION (Always at top) */}
+        {hasSearch && displayedSources.length > 0 && (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <div className="flex items-center gap-2 mb-3 text-primary">
+                    <AlignLeft className="w-5 h-5" />
+                    <h3 className="text-lg font-medium font-serif">Sources</h3>
                 </div>
-            )}
-
-            {activeTab === 'sources' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    {displayedSources.map((source, idx) => (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {displayedSources.slice(0, 4).map((source, idx) => (
                         <a 
                             key={idx}
                             href={source.link}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-start gap-4 p-4 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-all group hover:shadow-md"
+                            className="flex flex-col p-3 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-all h-[90px] justify-between group shadow-sm hover:shadow-md"
                         >
-                            <div className="w-8 h-8 rounded-full bg-border/50 overflow-hidden shrink-0 mt-1 border border-border/50">
-                                <img 
-                                    src={`https://www.google.com/s2/favicons?domain=${new URL(source.link).hostname}&sz=32`}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
-                                    alt=""
-                                />
+                            <div className="text-xs font-semibold text-primary line-clamp-2 leading-tight">
+                                {source.title}
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="text-sm font-semibold text-primary truncate mb-1 group-hover:text-blue-500 transition-colors">
-                                    {source.title}
+                            <div className="flex items-center gap-2 mt-2">
+                                <div className="w-4 h-4 rounded-full bg-border/50 overflow-hidden shrink-0">
+                                    <img 
+                                        src={`https://www.google.com/s2/favicons?domain=${new URL(source.link).hostname}&sz=32`}
+                                        className="w-full h-full object-cover opacity-80"
+                                        onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
+                                        alt=""
+                                    />
                                 </div>
-                                <div className="text-xs text-muted truncate mb-2 font-mono">
+                                <div className="text-[10px] text-muted truncate font-medium max-w-full">
                                     {source.displayLink}
                                 </div>
-                                <p className="text-sm text-muted/80 line-clamp-2 leading-relaxed">
-                                    {source.snippet}
-                                </p>
+                                <div className="ml-auto text-[10px] text-muted opacity-50 font-mono">
+                                    {idx + 1}
+                                </div>
                             </div>
                         </a>
                     ))}
+                    {displayedSources.length > 4 && (
+                        <button className="flex items-center justify-center p-3 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-all h-[90px] text-xs font-medium text-muted hover:text-primary">
+                             View {displayedSources.length - 4} more
+                        </button>
+                    )}
                 </div>
-            )}
+            </div>
+        )}
 
-            {/* Action Bar */}
-            {activeTab === 'answer' && msg.content && (
-                <div className="flex items-center gap-2 mt-6 border-t border-border pt-4">
-                    <button 
-                        onClick={handleCopy}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all border border-transparent hover:border-border" 
-                    >
-                        {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                        {isCopied ? 'Copied' : 'Copy'}
-                    </button>
-                    
-                    <button 
-                        onClick={handleShare}
-                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all border border-transparent hover:border-border" 
-                    >
-                        <Share className="w-3.5 h-3.5" />
-                        Share
-                    </button>
+        {/* 2. MAIN CONTENT AREA (Answer + Side Panel) */}
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+            
+            {/* Left Column: Answer */}
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-3 text-primary">
+                    <ImpersioLogo className="w-5 h-5 text-scira-accent" />
+                    <h3 className="text-lg font-medium font-serif">Answer</h3>
+                </div>
 
-                    <div className="w-[1px] h-4 bg-border mx-1" />
+                {/* Thinking Indicator */}
+                {isLoading && isLast && !msg.content && (!msg.proSearchSteps || msg.proSearchSteps.length === 0) && (
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-2 h-2 bg-scira-accent rounded-full animate-pulse" />
+                        <span className="text-sm text-muted font-medium">Thinking...</span>
+                    </div>
+                )}
+
+                <div className="min-h-[20px]">
+                    <MessageContent 
+                        content={msg.content} 
+                        isStreaming={isLast && isLoading} 
+                        sources={msg.sources}
+                    />
+                </div>
+
+                {/* Widgets */}
+                {msg.widget && (
+                    <div className="mt-8 border-t border-border pt-6">
+                        {msg.widget.type === 'time' && <TimeWidget data={msg.widget.data} />}
+                        {msg.widget.type === 'weather' && <WeatherWidget data={msg.widget.data} />}
+                        {msg.widget.type === 'stock' && <StockWidget data={msg.widget.data} />}
+                        {msg.widget.type === 'slides' && <SlidesWidget data={msg.widget.data} />}
+                    </div>
+                )}
+
+                {/* Action Bar */}
+                {msg.content && (
+                    <div className="flex items-center gap-2 mt-6 border-t border-border pt-4">
+                        <button 
+                            onClick={handleCopy}
+                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all border border-transparent hover:border-border" 
+                        >
+                            {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                            {isCopied ? 'Copied' : 'Copy'}
+                        </button>
+                        
+                        <button 
+                            onClick={handleShare}
+                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all border border-transparent hover:border-border" 
+                        >
+                            <Share className="w-3.5 h-3.5" />
+                            Share
+                        </button>
+
+                        <div className="w-[1px] h-4 bg-border mx-1" />
+                        
+                        <button 
+                            onClick={() => setFeedbackType('up')}
+                            className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all" 
+                        >
+                            <ThumbsUp className="w-3.5 h-3.5" />
+                        </button>
+                        
+                        <button 
+                            onClick={() => setFeedbackType('down')}
+                            className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all" 
+                        >
+                            <ThumbsDown className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Right Column: Images Side Panel */}
+            {(searchImages.length > 0 || (displayedSources.length > 0 && displayedSources.some(s => s.image))) && (
+                <div className="lg:w-72 xl:w-80 shrink-0 flex flex-col gap-4 animate-in fade-in slide-in-from-right-4 duration-700 delay-200">
                     
-                    <button 
-                        onClick={() => setFeedbackType('up')}
-                        className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all" 
-                    >
-                        <ThumbsUp className="w-3.5 h-3.5" />
-                    </button>
+                    {/* Featured Image (Large) */}
+                    <div className="aspect-[16/10] bg-surface rounded-xl overflow-hidden border border-border relative group cursor-pointer shadow-sm hover:shadow-md transition-all">
+                         <img 
+                            src={searchImages[0] || displayedSources.find(s => s.image)?.image} 
+                            alt="Featured" 
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                         />
+                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                    </div>
+
+                    {/* Small Thumbnails Grid */}
+                    <div className="grid grid-cols-3 gap-2">
+                        {(searchImages.length > 0 ? searchImages.slice(1, 4) : displayedSources.filter(s => s.image).slice(1, 4).map(s => s.image!)).map((img, idx) => (
+                             <div key={idx} className="aspect-square bg-surface rounded-lg overflow-hidden border border-border relative group cursor-pointer hover:shadow-sm">
+                                <img src={img} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" />
+                             </div>
+                        ))}
+                        {/* View More Placeholder */}
+                        <div className="aspect-square bg-surface-hover rounded-lg border border-border flex flex-col items-center justify-center text-muted hover:text-primary hover:bg-border transition-colors cursor-pointer">
+                            <ImageIcon className="w-4 h-4 mb-1" />
+                            <span className="text-[10px] font-medium">View more</span>
+                        </div>
+                    </div>
                     
-                    <button 
-                        onClick={() => setFeedbackType('down')}
-                        className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all" 
-                    >
-                        <ThumbsDown className="w-3.5 h-3.5" />
+                    <button className="mt-2 w-full py-2 flex items-center justify-center gap-2 text-xs font-medium text-muted hover:text-primary border border-dashed border-border rounded-lg hover:bg-surface-hover transition-all">
+                        <Plus className="w-3 h-3" />
+                        Search Videos
                     </button>
                 </div>
             )}
@@ -913,7 +843,8 @@ export default function App() {
         <SubscriptionModal isOpen={isSubscriptionModalOpen} onClose={() => setIsSubscriptionModalOpen(false)} />
 
         <SidebarInset>
-           <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative transition-all duration-300">
+           {/* Main Container constrained to SidebarInset area */}
+           <div className="absolute inset-0 flex flex-col min-w-0 overflow-hidden">
              {/* Mobile Sidebar Trigger */}
              <div className="md:hidden fixed top-3 left-3 z-50">
                  <SidebarTrigger />
@@ -941,7 +872,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="flex-1 flex flex-col relative h-full">
-                        <div className="flex-1 overflow-y-auto pb-40 pt-6 px-4 md:px-0 scroll-smooth">
+                        <div className="flex-1 overflow-y-auto pb-44 pt-6 px-4 md:px-0 scroll-smooth">
                           <div className="flex flex-col w-full"> 
                             {messages.map((msg, idx) => (
                                 <MessageItem 
@@ -965,7 +896,7 @@ export default function App() {
                   )}
                 </div>
              )}
-           </main>
+           </div>
         </SidebarInset>
       </div>
     </SidebarProvider>

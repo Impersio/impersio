@@ -89,10 +89,26 @@ const SidebarProvider = React.forwardRef<
     }, [toggleSidebar])
 
     React.useEffect(() => {
-      const checkMobile = () => setIsMobile(window.innerWidth < 768)
-      checkMobile()
-      window.addEventListener("resize", checkMobile)
-      return () => window.removeEventListener("resize", checkMobile)
+      const handleResize = () => {
+        const width = window.innerWidth
+        const mobile = width < 768
+        setIsMobile(mobile)
+
+        // Automatic collapse/expand logic based on screen width
+        if (!mobile) {
+             if (width < 1024) {
+                 _setOpen(false) // Collapse on tablet/small laptops
+             } else {
+                 _setOpen(true) // Expand on large screens
+             }
+        }
+      }
+      
+      // Initial check
+      handleResize()
+      
+      window.addEventListener("resize", handleResize)
+      return () => window.removeEventListener("resize", handleResize)
     }, [])
 
     const state = open ? "expanded" : "collapsed"
@@ -184,7 +200,7 @@ const Sidebar = React.forwardRef<
             )}
             <div
                 className={cn(
-                    "fixed inset-y-0 z-50 h-full w-[--sidebar-width-mobile] flex-col bg-sidebar text-sidebar-foreground transition-transform duration-300 ease-in-out border-r border-sidebar-border",
+                    "fixed inset-y-0 z-50 h-full w-[--sidebar-width-mobile] flex-col bg-sidebar text-sidebar-foreground transition-transform duration-300 ease-in-out border-r border-sidebar-border shadow-2xl",
                     openMobile ? "translate-x-0" : "-translate-x-full",
                     side === "right" && "right-0 translate-x-full data-[open=true]:translate-x-0",
                     side === "left" && "left-0",
