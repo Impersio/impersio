@@ -18,57 +18,55 @@ const isVisualIntent = (query: string): boolean => {
   return false;
 };
 
-// Optimized for speed < 2s using Exa
+// Optimized for speed < 2s using Exa for text + Tavily for images
 export const searchFast = async (query: string): Promise<{ results: SearchResult[]; images: string[] }> => {
   const exaKey = getExaKey();
+  const tavilyKey = getTavilyKey();
   
-  // If Exa key is missing, fall back immediately to web search (Tavily)
-  if (!exaKey) {
-      return searchWeb(query, 'fast-fallback');
+  const visual = isVisualIntent(query);
+
+  // If Exa key is missing, or visual intent is high, fall back immediately to Tavily
+  if (!exaKey || visual) {
+      return searchWeb(query, visual ? 'fast-visual' : 'fast-fallback');
   }
 
   try {
-    const visual = isVisualIntent(query);
+    // Execute searches in parallel:
+    // 1. Exa for high-quality, fast text results
+    // 2. Tavily for images (since Exa's fast mode doesn't provide them efficiently)
+    const [exaResponse, tavilyResponse] = await Promise.all([
+        fetch("https://api.exa.ai/search", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": exaKey,
+            },
+            body: JSON.stringify({
+                query: query,
+                numResults: 10,
+                type: "keyword",
+                useAutoprompt: false,
+                contents: {
+                    text: true,
+                    highlights: {
+                        numSentences: 2,
+                        query: query
+                    }
+                }
+            }),
+        }).then(r => r.ok ? r.json() : null),
+        
+        tavilyKey ? searchWeb(query, 'images-only') : Promise.resolve({ images: [] as string[] })
+    ]);
 
-    // If clearly visual, use Tavily which is better for image retrieval
-    if (visual) {
-        return searchWeb(query, 'fast-visual');
+    if (!exaResponse) {
+        throw new Error("Exa API request failed");
     }
 
-    // Exa AI - Optimized for Speed (User Request: "exa fast 10 sources under 2 seconds")
-    const response = await fetch("https://api.exa.ai/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": exaKey,
-      },
-      body: JSON.stringify({
-        query: query,
-        numResults: 10, // Increased to 10 as requested
-        type: "keyword", // "fast" mode (keyword) instead of "neural"
-        useAutoprompt: false, // Disabled for speed
-        contents: {
-          text: true, // Enabled as requested
-          highlights: {
-              numSentences: 2, // Keep highlights for better snippets
-              query: query
-          }
-        }
-      }),
-    });
-
-    if (!response.ok) {
-       console.warn("Exa API failed, falling back to Tavily");
-       return searchWeb(query, 'fast-fallback');
-    }
-
-    const data = await response.json();
-    
-    const results = data.results?.map((item: any) => {
+    const results = exaResponse.results?.map((item: any) => {
         let hostname = 'Source';
         try { hostname = new URL(item.url).hostname; } catch (e) {}
         
-        // Prefer highlights, fall back to text, truncate to keep payload light
         const snippet = item.highlights?.[0] || item.text?.substring(0, 300) || "";
 
         return {
@@ -80,10 +78,14 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
         };
     }) || [];
 
-    return { results, images: [] };
+    // Return combined results: Exa text + Tavily images
+    return { 
+        results, 
+        images: tavilyResponse.images || [] 
+    };
 
   } catch (error) {
-    console.warn("Exa Search Error:", error);
+    console.warn("Exa Search Error, falling back to Tavily:", error);
     return searchWeb(query, 'fast-fallback');
   }
 };
@@ -116,8 +118,12 @@ export const searchWeb = async (query: string, mode: string = 'web'): Promise<{ 
         maxResults = 8;
         includeImages = true;
     } else if (mode === 'fast-fallback') {
-        includeImages = false; 
-        maxResults = 4;
+        includeImages = true; // Enable images even in fallback
+        maxResults = 5;
+        searchDepth = "basic";
+    } else if (mode === 'images-only') {
+        includeImages = true;
+        maxResults = 5; // We mainly want the images array
         searchDepth = "basic";
     }
 

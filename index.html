@@ -89,19 +89,19 @@
       /* Claude Classic Design Tokens */
       :root {
         /* Light Mode: Warm Paper */
-        --bg-primary: #FAF8F5;      
+        --bg-primary: #F9F9F5;      
         --bg-secondary: #F0F0F0;    
         --surface: #FFFFFF;         
         --surface-hover: #F2F0E9;
         --text-primary: #1A1A1A;    
         --text-secondary: #6E6E6E;  
-        --accent-primary: #21808D;  /* New Teal */
+        --accent-primary: #1F8E98;  /* Perplexity Teal */
         --accent-hover: #1A6A76;
         --border: #E5E5E5;          
         --bubble-user: #F0F0F0;
         
         /* Sidebar Variables */
-        --sidebar-background: #F0F0F0;
+        --sidebar-background: #F9F9F5;
         --sidebar-foreground: #6E6E6E;
         --sidebar-primary: #1A1A1A;
         --sidebar-primary-foreground: #FFFFFF;
@@ -113,19 +113,19 @@
       
       .dark {
         /* Dark Mode: Full Black & Deep Charcoal */
-        --bg-primary: #000000;      /* Full Black Background */
+        --bg-primary: #191919;      /* Perplexity Dark */
         --bg-secondary: #121212;    /* Sidebar/Inputs */
-        --surface: #181818;         /* Cards */
-        --surface-hover: #222222;
+        --surface: #202020;         /* Cards */
+        --surface-hover: #2A2A2A;
         --text-primary: #ECECEC;    
         --text-secondary: #909090;  
         --accent-primary: #21808D;  /* New Teal */
         --accent-hover: #2999A8;
-        --border: #262626;
+        --border: #333333;
         --bubble-user: #1A1A1A;     /* Specific dark bubble for user */
         
         /* Sidebar Variables Dark */
-        --sidebar-background: #000000;
+        --sidebar-background: #191919;
         --sidebar-foreground: #909090;
         --sidebar-primary: #21808D;
         --sidebar-primary-foreground: #FFFFFF;
@@ -160,20 +160,21 @@
         line-height: 1.7; 
         font-size: 16px; 
         color: var(--text-primary);
+        font-family: 'Inter', sans-serif; /* Clean sans-serif for body */
       }
       
       .markdown-body h1, .markdown-body h2, .markdown-body h3 {
         font-family: 'Instrument Serif', serif;
-        font-weight: 400;
-        margin-top: 1.5rem;
-        margin-bottom: 0.75rem;
+        font-weight: 500;
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
       }
       
       .markdown-body p {
-        margin-bottom: 1rem;
-        font-family: 'Instrument Serif', serif; /* Serif body text for AI */
-        font-size: 1.1rem;
-        line-height: 1.6;
+        margin-bottom: 1.25rem;
+        font-size: 1.05rem;
+        line-height: 1.75;
       }
 
       .markdown-body strong {
@@ -184,6 +185,10 @@
       /* Specific adjustments for sans-serif UI elements */
       .font-sans {
         font-family: 'Inter', sans-serif !important;
+      }
+      
+      .font-serif {
+        font-family: 'Instrument Serif', serif !important;
       }
       
       /* Updated Selection Color to Teal */

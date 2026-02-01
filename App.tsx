@@ -24,7 +24,9 @@ import {
   ChevronDown,
   AlignLeft,
   Image as ImageIcon,
-  Plus
+  Plus,
+  ArrowRight,
+  Menu
 } from 'lucide-react';
 import { streamResponse, orchestrateProSearch, detectIntent } from './services/geminiService';
 import { searchFast, getSuggestions } from './services/googleSearchService';
@@ -189,13 +191,22 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
   if (!msg) return null;
 
-  // --- USER MESSAGE ---
+  // --- USER MESSAGE (HEADER STYLE) ---
   if (msg.role === 'user') {
     return (
-      <div className="w-full max-w-3xl mx-auto py-6 px-4 animate-fade-in flex justify-end">
-          <div className="bg-[#F3F3F3] dark:bg-[#1A1A1A] text-primary px-5 py-2.5 rounded-2xl text-[20px] leading-relaxed max-w-[85%] font-sans">
-             {msg.content}
-          </div>
+      <div className="w-full max-w-3xl mx-auto pt-8 px-4 animate-fade-in">
+         {/* Metadata Row */}
+         <div className="flex items-center gap-3 mb-4 text-muted">
+            <div className="w-8 h-8 rounded-full bg-[#E5E5E5] dark:bg-[#333] flex items-center justify-center text-sm font-medium text-primary">
+               S
+            </div>
+            <span className="text-sm font-medium text-primary">You</span>
+            <span className="text-xs text-muted/60">• A few seconds ago</span>
+         </div>
+         {/* Query Title */}
+         <h1 className="text-3xl md:text-4xl font-serif font-medium text-primary tracking-tight leading-tight">
+            {msg.content}
+         </h1>
       </div>
     );
   }
@@ -206,7 +217,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
   const searchImages = msg.searchImages || [];
 
   return (
-      <div className="w-full max-w-3xl mx-auto pb-8 px-4 animate-fade-in flex flex-col gap-2 relative group/msg">
+      <div className="w-full max-w-3xl mx-auto pb-8 px-4 animate-fade-in flex flex-col gap-2 relative group/msg mt-6">
         
         {feedbackType && (
             <FeedbackModal 
@@ -223,63 +234,81 @@ const MessageItem: React.FC<MessageItemProps> = ({
             </div>
         )}
 
-        {/* Tabs - Only show if there are sources */}
-        {hasSearch && (
-            <div className="flex items-center gap-6 border-b border-border/40 mb-6">
-                <button 
-                    onClick={() => setActiveTab('answer')}
-                    className={`flex items-center gap-2 pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'answer' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-primary'}`}
-                >
-                    <Sparkles className="w-4 h-4" />
-                    Answer
-                </button>
-                <button 
-                    onClick={() => setActiveTab('images')}
-                    className={`flex items-center gap-2 pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'images' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-primary'}`}
-                >
-                    <ImageIcon className="w-4 h-4" />
-                    Images
-                </button>
-                <button 
-                    onClick={() => setActiveTab('sources')}
-                    className={`flex items-center gap-2 pb-3 text-sm font-medium transition-colors border-b-2 ${activeTab === 'sources' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-primary'}`}
-                >
-                    <AlignLeft className="w-4 h-4" />
-                    Sources
-                    {displayedSources.length > 0 && <span className="bg-surface-hover text-xs py-0.5 px-1.5 rounded-full">{displayedSources.length}</span>}
-                </button>
-            </div>
-        )}
+        {/* Tabs - Styled like Perplexity */}
+        <div className="flex items-center gap-6 border-b border-border/40 mb-6">
+            <button 
+                onClick={() => setActiveTab('answer')}
+                className={`flex items-center gap-2 pb-2.5 text-sm font-medium transition-all relative ${
+                    activeTab === 'answer' ? 'text-primary' : 'text-muted hover:text-primary'
+                }`}
+            >
+                <Sparkles className="w-4 h-4" />
+                Answer
+                {activeTab === 'answer' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />}
+            </button>
+            
+            {hasSearch && (
+                <>
+                    <button 
+                        onClick={() => setActiveTab('images')}
+                        className={`flex items-center gap-2 pb-2.5 text-sm font-medium transition-all relative ${
+                            activeTab === 'images' ? 'text-primary' : 'text-muted hover:text-primary'
+                        }`}
+                    >
+                        <ImageIcon className="w-4 h-4" />
+                        Images
+                        {activeTab === 'images' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />}
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('sources')}
+                        className={`flex items-center gap-2 pb-2.5 text-sm font-medium transition-all relative ${
+                            activeTab === 'sources' ? 'text-primary' : 'text-muted hover:text-primary'
+                        }`}
+                    >
+                        <AlignLeft className="w-4 h-4" />
+                        Sources
+                        {displayedSources.length > 0 && (
+                            <span className="bg-surface-hover text-muted text-[10px] py-0.5 px-1.5 rounded-full border border-border">
+                                {displayedSources.length}
+                            </span>
+                        )}
+                        {activeTab === 'sources' && <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />}
+                    </button>
+                </>
+            )}
+        </div>
 
         {/* Tab Content */}
         <div className="flex flex-col gap-4">
             
             {activeTab === 'answer' && (
                 <>
-                    {/* Sources Grid (Top 4) */}
+                    {/* Sources Grid (Compact) */}
                     {hasSearch && displayedSources.length > 0 && (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
                             {displayedSources.slice(0, 4).map((source, idx) => (
                                 <a 
                                     key={idx}
                                     href={source.link}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="flex flex-col p-3 rounded-lg bg-surface hover:bg-surface-hover border border-border transition-all h-20 justify-between group shadow-sm hover:shadow-md"
+                                    className="flex flex-col p-3 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-all h-[90px] justify-between group shadow-sm hover:shadow-md"
                                 >
-                                    <div className="flex items-center gap-2 mb-1">
+                                    <div className="text-xs font-semibold text-primary line-clamp-2 leading-tight">
+                                        {source.title}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-2">
                                         <div className="w-4 h-4 rounded-full bg-border/50 overflow-hidden shrink-0">
                                             <img 
                                                 src={`https://www.google.com/s2/favicons?domain=${new URL(source.link).hostname}&sz=32`}
-                                                className="w-full h-full object-cover"
+                                                className="w-full h-full object-cover opacity-80"
                                                 onError={(e) => (e.target as HTMLImageElement).style.display = 'none'}
                                                 alt=""
                                             />
                                         </div>
-                                        <div className="text-[11px] text-muted truncate font-medium">{source.displayLink}</div>
-                                    </div>
-                                    <div className="text-xs font-medium text-primary line-clamp-2 leading-tight">
-                                        {source.title}
+                                        <div className="text-[10px] text-muted truncate font-medium max-w-full">
+                                            {source.displayLink}
+                                        </div>
                                     </div>
                                 </a>
                             ))}
@@ -288,13 +317,22 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
                     {/* Thinking Indicator */}
                     {isLoading && isLast && !msg.content && (!msg.proSearchSteps || msg.proSearchSteps.length === 0) && (
-                        <div className="flex items-center gap-3 mb-6 animate-pulse">
-                            <ImpersioLogo className="w-6 h-6 text-scira-accent animate-spin-slow" />
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-2 h-2 bg-scira-accent rounded-full animate-pulse" />
+                            <span className="text-sm text-muted font-medium">Thinking...</span>
                         </div>
                     )}
 
-                    {/* Main Content */}
-                    <div className="min-h-[20px] font-serif text-lg leading-relaxed text-primary">
+                    {/* Main Answer Content */}
+                    <div className="min-h-[20px]">
+                        {/* Answer Header */}
+                        {msg.content && (
+                            <div className="flex items-center gap-2 mb-4">
+                                <ImpersioLogo className="w-6 h-6 text-scira-accent" />
+                                <span className="text-lg font-serif font-medium text-primary">Answer</span>
+                            </div>
+                        )}
+                        
                         <MessageContent 
                             content={msg.content} 
                             isStreaming={isLast && isLoading} 
@@ -304,7 +342,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
                     {/* Widgets */}
                     {msg.widget && (
-                        <div className="mt-8">
+                        <div className="mt-8 border-t border-border pt-6">
                             {msg.widget.type === 'time' && <TimeWidget data={msg.widget.data} />}
                             {msg.widget.type === 'weather' && <WeatherWidget data={msg.widget.data} />}
                             {msg.widget.type === 'stock' && <StockWidget data={msg.widget.data} />}
@@ -317,41 +355,43 @@ const MessageItem: React.FC<MessageItemProps> = ({
             {activeTab === 'images' && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {searchImages.length > 0 ? (
-                        searchImages.slice(0, 6).map((img, idx) => (
-                            <div key={idx} className="aspect-video bg-surface rounded-xl overflow-hidden border border-border relative group">
+                        searchImages.slice(0, 9).map((img, idx) => (
+                            <div key={idx} className="aspect-[4/3] bg-surface rounded-xl overflow-hidden border border-border relative group cursor-pointer hover:shadow-lg transition-all">
                                 <img src={img} alt="Result" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                             </div>
                         ))
                     ) : displayedSources.length > 0 ? (
-                         // Fallback to source images if no direct search images
-                         displayedSources.slice(0, 6).filter(s => s.image).map((s, idx) => (
-                            <div key={idx} className="aspect-video bg-surface rounded-xl overflow-hidden border border-border relative group">
+                         // Fallback to source images
+                         displayedSources.slice(0, 9).filter(s => s.image).map((s, idx) => (
+                            <div key={idx} className="aspect-[4/3] bg-surface rounded-xl overflow-hidden border border-border relative group cursor-pointer hover:shadow-lg transition-all">
                                 <img src={s.image} alt={s.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <p className="text-[10px] text-white truncate">{s.title}</p>
+                                <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <p className="text-[11px] text-white truncate font-medium">{s.title}</p>
+                                    <p className="text-[9px] text-white/70 truncate">{s.displayLink}</p>
                                 </div>
                             </div>
                          ))
                     ) : (
-                        <div className="col-span-full py-12 text-center text-muted">
+                        <div className="col-span-full py-16 text-center text-muted border border-dashed border-border rounded-xl">
                             <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                            No images found
+                            <p>No images found for this search.</p>
                         </div>
                     )}
                 </div>
             )}
 
             {activeTab === 'sources' && (
-                <div className="grid grid-cols-1 gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {displayedSources.map((source, idx) => (
                         <a 
                             key={idx}
                             href={source.link}
                             target="_blank"
                             rel="noreferrer"
-                            className="flex items-start gap-4 p-4 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-all group"
+                            className="flex items-start gap-4 p-4 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-all group hover:shadow-md"
                         >
-                            <div className="w-8 h-8 rounded-full bg-border/50 overflow-hidden shrink-0 mt-1">
+                            <div className="w-8 h-8 rounded-full bg-border/50 overflow-hidden shrink-0 mt-1 border border-border/50">
                                 <img 
                                     src={`https://www.google.com/s2/favicons?domain=${new URL(source.link).hostname}&sz=32`}
                                     className="w-full h-full object-cover"
@@ -364,7 +404,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                                     {source.title}
                                 </div>
                                 <div className="text-xs text-muted truncate mb-2 font-mono">
-                                    {source.link}
+                                    {source.displayLink}
                                 </div>
                                 <p className="text-sm text-muted/80 line-clamp-2 leading-relaxed">
                                     {source.snippet}
@@ -375,82 +415,39 @@ const MessageItem: React.FC<MessageItemProps> = ({
                 </div>
             )}
 
-            {/* Action Bar (Only visible in Answer tab usually, but can be global) */}
-            {activeTab === 'answer' && (
-                <div className="flex items-center gap-1 mt-4 opacity-100 transition-opacity duration-200">
+            {/* Action Bar */}
+            {activeTab === 'answer' && msg.content && (
+                <div className="flex items-center gap-2 mt-6 border-t border-border pt-4">
                     <button 
                         onClick={handleCopy}
-                        className="p-2 text-muted hover:text-primary hover:bg-surface-hover rounded-lg transition-all" 
-                        title={isCopied ? "Copied" : "Copy"}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all border border-transparent hover:border-border" 
                     >
-                        {isCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                    
-                    <button 
-                        onClick={() => setFeedbackType('up')}
-                        className="p-2 text-muted hover:text-primary hover:bg-surface-hover rounded-lg transition-all" 
-                        title="Good response"
-                    >
-                        <ThumbsUp className="w-4 h-4" />
-                    </button>
-                    
-                    <button 
-                        onClick={() => setFeedbackType('down')}
-                        className="p-2 text-muted hover:text-primary hover:bg-surface-hover rounded-lg transition-all" 
-                        title="Bad response"
-                    >
-                        <ThumbsDown className="w-4 h-4" />
+                        {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        {isCopied ? 'Copied' : 'Copy'}
                     </button>
                     
                     <button 
                         onClick={handleShare}
-                        className="p-2 text-muted hover:text-primary hover:bg-surface-hover rounded-lg transition-all" 
-                        title="Share"
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all border border-transparent hover:border-border" 
                     >
-                        <Share className="w-4 h-4" />
+                        <Share className="w-3.5 h-3.5" />
+                        Share
                     </button>
 
-                    {/* Download Dropdown */}
-                    <div className="relative" ref={downloadRef}>
-                        <button 
-                            onClick={() => setIsDownloadOpen(!isDownloadOpen)}
-                            className={`p-2 hover:text-primary hover:bg-surface-hover rounded-lg transition-all ${isDownloadOpen ? 'text-primary bg-surface-hover' : 'text-muted'}`}
-                            title="Download"
-                        >
-                            <Download className="w-4 h-4" />
-                        </button>
-                        
-                        {isDownloadOpen && (
-                            <div className="absolute top-full left-0 mt-2 w-36 bg-surface border border-border rounded-xl shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-100">
-                                <button 
-                                    onClick={() => handleDownload('pdf')}
-                                    className="w-full text-left px-4 py-2.5 text-sm text-muted hover:text-primary hover:bg-surface-hover flex items-center gap-2"
-                                >
-                                    <FileText className="w-3.5 h-3.5" /> PDF
-                                </button>
-                                <button 
-                                    onClick={() => handleDownload('md')}
-                                    className="w-full text-left px-4 py-2.5 text-sm text-muted hover:text-primary hover:bg-surface-hover flex items-center gap-2"
-                                >
-                                    <File className="w-3.5 h-3.5" /> Markdown
-                                </button>
-                                <button 
-                                    onClick={() => handleDownload('docx')}
-                                    className="w-full text-left px-4 py-2.5 text-sm text-muted hover:text-primary hover:bg-surface-hover flex items-center gap-2"
-                                >
-                                    <FileText className="w-3.5 h-3.5" /> DOCX
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex-1" />
+                    <div className="w-[1px] h-4 bg-border mx-1" />
                     
                     <button 
-                        className="p-2 text-muted hover:text-primary hover:bg-surface-hover rounded-lg transition-all" 
-                        title="Retry"
+                        onClick={() => setFeedbackType('up')}
+                        className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all" 
                     >
-                        <RotateCcw className="w-4 h-4" />
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                    </button>
+                    
+                    <button 
+                        onClick={() => setFeedbackType('down')}
+                        className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded-full transition-all" 
+                    >
+                        <ThumbsDown className="w-3.5 h-3.5" />
                     </button>
                 </div>
             )}
