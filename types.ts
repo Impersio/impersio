@@ -11,6 +11,7 @@ export interface SearchMode {
 export interface ModelOption {
   id: string;
   name: string;
+  description?: string;
   icon: React.ElementType;
 }
 
@@ -76,7 +77,8 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   sources?: SearchResult[];
-  images?: string[];
+  images?: string[]; // User uploaded images
+  searchImages?: string[]; // Images found via search
   widget?: WidgetData;
   relatedQuestions?: string[];
   proSearchSteps?: ProSearchStep[];
