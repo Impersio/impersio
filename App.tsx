@@ -53,22 +53,23 @@ const MODEL_OPTIONS: ModelOption[] = [
 
 const CopilotProgress = ({ events }: { events: CopilotEvent[] }) => {
     return (
-        <div className="flex flex-col gap-3 py-4 animate-fade-in">
+        <div className="flex flex-col gap-4 py-2 animate-fade-in w-full">
             {events.map((event) => (
                 <div key={event.id} className="flex items-start gap-3">
-                    <div className="mt-0.5">
-                        {event.status === 'loading' && <div className="w-4 h-4 border-2 border-scira-accent border-t-transparent rounded-full animate-spin" />}
-                        {event.status === 'completed' && <Check className="w-4 h-4 text-scira-accent" />}
+                    <div className="mt-0.5 shrink-0">
+                        {event.status === 'loading' && <Loader2 className="w-4 h-4 text-[#21808D] animate-spin" />}
+                        {event.status === 'completed' && <Check className="w-4 h-4 text-[#21808D]" />}
                         {event.status === 'pending' && <div className="w-4 h-4 rounded-full border border-border" />}
                     </div>
-                    <div className="flex flex-col">
-                        <span className={`text-sm font-medium ${event.status === 'completed' ? 'text-primary' : 'text-muted'}`}>
+                    <div className="flex flex-col gap-1.5 min-w-0">
+                        <span className={`text-sm font-medium ${event.status === 'completed' ? 'text-primary' : 'text-muted'} transition-colors duration-300`}>
                             {event.message}
                         </span>
-                        {event.items && (
-                            <div className="flex flex-wrap gap-2 mt-2">
+                        {/* Show items like search queries in a clean pill layout */}
+                        {event.items && event.items.length > 0 && (
+                            <div className="flex flex-wrap gap-2 animate-in slide-in-from-top-2 fade-in duration-300">
                                 {event.items.map((item, i) => (
-                                    <span key={i} className="text-xs bg-surface-hover px-2 py-1 rounded text-muted">
+                                    <span key={i} className="text-xs bg-surface border border-border/60 text-muted px-2.5 py-1 rounded-md">
                                         {item}
                                     </span>
                                 ))}
@@ -107,8 +108,8 @@ const CopilotWidget = ({
     };
 
     return (
-        <div className="w-full bg-surface border border-border rounded-lg p-6 my-4 animate-fade-in shadow-sm font-sans">
-            <h3 className="text-base text-primary mb-5 leading-relaxed font-medium">{step.question}</h3>
+        <div className="w-full bg-surface border border-border rounded-xl p-6 my-4 animate-in fade-in slide-in-from-bottom-4 duration-500 shadow-sm font-sans">
+            <h3 className="text-[15px] font-medium text-primary mb-5 leading-relaxed">{step.question}</h3>
             
             {step.type === 'text' && (
                 <input 
@@ -116,7 +117,7 @@ const CopilotWidget = ({
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     placeholder="Type your answer..."
-                    className="w-full bg-background border border-border rounded-md px-4 py-2.5 text-primary text-sm focus:outline-none focus:border-scira-accent mb-6 placeholder:text-muted/60"
+                    className="w-full bg-background border border-border rounded-lg px-4 py-3 text-primary text-sm focus:outline-none focus:border-[#21808D] focus:ring-1 focus:ring-[#21808D]/20 mb-6 placeholder:text-muted/60 transition-all"
                     autoFocus
                     onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                 />
@@ -130,14 +131,14 @@ const CopilotWidget = ({
                             onClick={() => setSelected(prev => 
                                 prev.includes(opt) ? prev.filter(p => p !== opt) : [...prev, opt]
                             )}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-md border text-sm text-left transition-all ${
+                            className={`flex items-center gap-3 px-3.5 py-3 rounded-lg border text-sm text-left transition-all duration-200 ${
                                 selected.includes(opt) 
-                                    ? 'bg-scira-accent/5 border-scira-accent text-primary' 
+                                    ? 'bg-[#21808D]/5 border-[#21808D] text-primary' 
                                     : 'bg-transparent border-transparent hover:bg-surface-hover text-muted hover:text-primary'
                             }`}
                         >
-                            <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                                selected.includes(opt) ? 'bg-scira-accent border-scira-accent' : 'border-muted'
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                                selected.includes(opt) ? 'bg-[#21808D] border-[#21808D]' : 'border-muted/50'
                             }`}>
                                 {selected.includes(opt) && <Check className="w-3 h-3 text-white" />}
                             </div>
@@ -150,15 +151,15 @@ const CopilotWidget = ({
             <div className="flex items-center gap-2">
                 <button 
                     onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    className="px-4 py-1.5 bg-[#21808D] hover:bg-[#1A6A76] text-white rounded-md text-sm font-medium transition-colors"
+                    disabled={isSubmitting || (step.type === 'text' && !input) || (step.type === 'selection' && selected.length === 0)}
+                    className="px-4 py-2 bg-[#21808D] hover:bg-[#1A6A76] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
                 >
                     Continue
                 </button>
                 <button 
                     onClick={handleSkip}
                     disabled={isSubmitting}
-                    className="px-4 py-1.5 bg-[#F2F2F2] hover:bg-[#E5E5E5] dark:bg-[#333] dark:hover:bg-[#444] text-primary rounded-md text-sm font-medium transition-colors"
+                    className="px-4 py-2 bg-surface-hover hover:bg-border text-primary rounded-lg text-sm font-medium transition-colors"
                 >
                     Skip
                 </button>
@@ -172,20 +173,18 @@ interface MessageItemProps {
   isLast: boolean;
   isLoading: boolean;
   onCopilotAnswer: (ans: string) => void;
-  modelName: string;
 }
 
 const MessageItem: React.FC<MessageItemProps> = ({ 
   msg, 
   isLast, 
   isLoading,
-  onCopilotAnswer,
-  modelName
+  onCopilotAnswer
 }) => {
-  // User Message (Title Style)
+  // --- USER MESSAGE ---
   if (msg.role === 'user') {
     return (
-      <div className="w-full max-w-7xl mx-auto pt-10 pb-6 px-4 md:px-8 animate-fade-in border-b border-border/20">
+      <div className="w-full max-w-5xl mx-auto pt-10 pb-6 px-4 md:px-8 animate-fade-in">
          <h1 className="text-[32px] md:text-[36px] font-medium text-primary font-serif tracking-tight leading-[1.2]">
             {msg.content}
          </h1>
@@ -193,20 +192,19 @@ const MessageItem: React.FC<MessageItemProps> = ({
     );
   }
 
-  // --- COPILOT ACTIVE FLOW ---
-  // If we are actively in the copilot flow (before final answer)
+  // --- COPILOT ACTIVE FLOW (Centered) ---
   if (msg.isCopilotActive) {
       return (
-          <div className="w-full max-w-3xl mx-auto px-4 md:px-0 pb-12 pt-4">
-              <div className="flex items-center gap-2 mb-4 text-primary font-medium">
-                   <Sparkles className="w-4 h-4 text-scira-accent" />
+          <div className="w-full max-w-2xl mx-auto px-6 pb-12 pt-4">
+              <div className="flex items-center gap-2 mb-6 text-primary font-medium opacity-90">
+                   <Sparkles className="w-4 h-4 text-[#21808D]" />
                    <span>Copilot</span>
               </div>
               
-              {/* Show Progress Log */}
+              {/* Progress Log */}
               {msg.copilotEvents && <CopilotProgress events={msg.copilotEvents} />}
 
-              {/* Show Widget if Step Exists and we are not 'searching' yet */}
+              {/* Widget (Only show if not searching yet) */}
               {msg.copilotStep && !msg.copilotEvents?.some(e => e.message === 'Searching web') && (
                   <CopilotWidget step={msg.copilotStep} onAnswer={onCopilotAnswer} />
               )}
@@ -214,45 +212,45 @@ const MessageItem: React.FC<MessageItemProps> = ({
       );
   }
 
-  // --- FINAL ANSWER LAYOUT ---
-  // Once Copilot is done (or if it wasn't active), we show the result
+  // --- RESULT LAYOUT (Pro Search Style - Centered with Sidebar) ---
   return (
-      <div className="w-full max-w-7xl mx-auto pb-16 px-4 md:px-8 animate-fade-in pt-8">
+      <div className="w-full max-w-5xl mx-auto pb-16 px-4 md:px-8 animate-fade-in pt-6">
         
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-10">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-12">
+            
             {/* LEFT COLUMN: Main Content */}
             <div className="min-w-0 flex flex-col gap-8">
                 
                 {/* Collapsed Copilot Status */}
                 {msg.copilotEvents && msg.copilotEvents.length > 0 && (
-                     <div className="flex items-center justify-between py-3 px-4 bg-surface border border-border rounded-xl">
-                        <div className="flex items-center gap-2 text-primary font-medium">
-                            <Sparkles className="w-4 h-4 text-scira-accent" />
-                            <span>Copilot</span>
+                     <div className="flex items-center justify-between py-2.5 px-4 bg-surface/50 border border-border/60 rounded-lg max-w-md">
+                        <div className="flex items-center gap-2 text-primary/80 font-medium text-sm">
+                            <Check className="w-3.5 h-3.5 text-[#21808D]" />
+                            <span>Researched with Copilot</span>
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-muted">
-                            <span>{msg.copilotEvents.length} steps completed</span>
-                            <ChevronDown className="w-4 h-4" />
+                        <div className="flex items-center gap-2 text-xs text-muted">
+                            <span>{msg.copilotEvents.length} steps</span>
+                            <ChevronDown className="w-3.5 h-3.5" />
                         </div>
                     </div>
                 )}
 
-                {/* Loading State for Final Generation */}
+                {/* Loading State */}
                 {isLoading && isLast && !msg.content && (
-                    <div className="flex items-center gap-3 text-primary font-medium">
-                        <div className="w-5 h-5 flex items-center justify-center">
-                            <div className="w-2.5 h-2.5 bg-scira-accent rounded-full animate-pulse shadow-[0_0_8px_rgba(33,128,141,0.6)]" />
+                    <div className="flex items-center gap-3 text-primary font-medium pl-1">
+                        <div className="w-4 h-4 flex items-center justify-center">
+                             <Loader2 className="w-4 h-4 animate-spin text-[#21808D]" />
                         </div>
-                        <span className="text-lg font-sans text-primary">Generating · {modelName}</span>
+                        <span className="text-base font-sans text-primary/80">Generating answer...</span>
                     </div>
                 )}
 
-                {/* Sources - Compact Cards */}
+                {/* Sources - Grid */}
                 {msg.sources && msg.sources.length > 0 && (
-                    <div>
+                    <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                         <div className="flex items-center gap-2 mb-3 text-primary">
-                            <AlignLeft className="w-5 h-5" />
-                            <h3 className="text-lg font-medium font-sans">Sources</h3>
+                            <AlignLeft className="w-4 h-4 text-muted" />
+                            <h3 className="text-sm font-medium font-sans text-muted uppercase tracking-wide">Sources</h3>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             {msg.sources.slice(0, 4).map((source, idx) => (
@@ -261,13 +259,13 @@ const MessageItem: React.FC<MessageItemProps> = ({
                                     href={source.link}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="flex flex-col p-3 rounded-lg bg-surface hover:bg-surface-hover border border-border transition-all h-[80px] justify-between group"
+                                    className="flex flex-col p-3 rounded-lg bg-surface hover:bg-surface-hover border border-border transition-all h-[72px] justify-between group"
                                 >
-                                    <div className="text-[13px] font-medium text-primary line-clamp-2 leading-snug font-sans">
+                                    <div className="text-xs font-medium text-primary line-clamp-2 leading-snug font-sans group-hover:text-[#21808D] transition-colors">
                                         {source.title}
                                     </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-4 h-4 rounded-full bg-border/50 overflow-hidden shrink-0">
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <div className="w-3.5 h-3.5 rounded-full bg-border/50 overflow-hidden shrink-0">
                                             <img 
                                                 src={`https://www.google.com/s2/favicons?domain=${new URL(source.link).hostname}&sz=32`}
                                                 className="w-full h-full object-cover opacity-80"
@@ -275,26 +273,21 @@ const MessageItem: React.FC<MessageItemProps> = ({
                                                 alt=""
                                             />
                                         </div>
-                                        <div className="text-[11px] text-muted truncate">
+                                        <div className="text-[10px] text-muted truncate">
                                             {source.displayLink}
                                         </div>
                                     </div>
                                 </a>
                             ))}
-                            {msg.sources.length > 4 && (
-                                <button className="flex items-center justify-center p-3 rounded-lg bg-surface hover:bg-surface-hover border border-border transition-all h-[80px] text-xs font-medium text-muted hover:text-primary">
-                                    View {msg.sources.length - 4} more
-                                </button>
-                            )}
                         </div>
                     </div>
                 )}
 
                 {/* Answer Content */}
                 {msg.content && (
-                    <div className="min-h-[20px]">
+                    <div className="min-h-[20px] animate-in fade-in slide-in-from-bottom-2 duration-700 delay-100">
                         <div className="flex items-center gap-2 mb-2 text-primary">
-                            <AlignLeft className="w-5 h-5 text-scira-accent" />
+                            <AlignLeft className="w-4 h-4 text-[#21808D]" />
                             <h3 className="text-lg font-medium font-sans">Answer</h3>
                         </div>
                         <MessageContent 
@@ -307,16 +300,16 @@ const MessageItem: React.FC<MessageItemProps> = ({
 
                 {/* Related Questions */}
                 {msg.relatedQuestions && msg.relatedQuestions.length > 0 && (
-                    <div className="pt-4 border-t border-border mt-2">
-                        <div className="flex items-center gap-2 mb-3 text-primary">
-                            <Layers className="w-5 h-5" />
-                            <h3 className="text-lg font-medium font-sans">Related</h3>
+                    <div className="pt-6 border-t border-border mt-2 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-200">
+                        <div className="flex items-center gap-2 mb-4 text-primary">
+                            <Layers className="w-4 h-4 text-muted" />
+                            <h3 className="text-sm font-medium font-sans text-muted uppercase tracking-wide">Related</h3>
                         </div>
-                        <div className="flex flex-col gap-0">
+                        <div className="flex flex-col gap-1">
                             {msg.relatedQuestions.map((q, idx) => (
                                 <div 
                                 key={idx} 
-                                className="flex items-center justify-between py-3 hover:bg-surface-hover cursor-pointer border-b border-border/40 group transition-colors px-1"
+                                className="flex items-center justify-between py-3 px-2 rounded-lg hover:bg-surface-hover cursor-pointer group transition-colors border border-transparent hover:border-border/50"
                                 onClick={() => { /* Handle click */ }}
                                 >
                                     <span className="text-primary/90 font-medium text-[15px]">{q}</span>
@@ -328,26 +321,31 @@ const MessageItem: React.FC<MessageItemProps> = ({
                 )}
             </div>
 
-            {/* RIGHT COLUMN: Media Gallery */}
-            <div className="flex flex-col gap-6">
+            {/* RIGHT COLUMN: Media Gallery & Widgets */}
+            <div className="flex flex-col gap-6 pt-1">
                 
                 {/* Images Section */}
                 {msg.images && msg.images.length > 0 && (
                      <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="flex items-center gap-2 mb-3">
+                             <ImageIcon className="w-4 h-4 text-muted" />
+                             <span className="text-xs font-medium text-muted uppercase tracking-wide">Images</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2.5">
                             {/* Featured large image */}
                             {msg.images[0] && (
-                                <div className="col-span-2 aspect-video rounded-xl overflow-hidden border border-border bg-surface-hover relative group cursor-pointer">
+                                <div className="col-span-2 aspect-video rounded-xl overflow-hidden border border-border bg-surface-hover relative group cursor-pointer shadow-sm">
                                     <img 
                                         src={msg.images[0].image} 
                                         alt={msg.images[0].title}
                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                     />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 </div>
                             )}
                             {/* Smaller images */}
                             {msg.images.slice(1, 3).map((img, idx) => (
-                                <div key={idx} className="aspect-square rounded-xl overflow-hidden border border-border bg-surface-hover relative group cursor-pointer">
+                                <div key={idx} className="aspect-square rounded-xl overflow-hidden border border-border bg-surface-hover relative group cursor-pointer shadow-sm">
                                      <img 
                                         src={img.image} 
                                         alt={img.title}
@@ -362,6 +360,10 @@ const MessageItem: React.FC<MessageItemProps> = ({
                 {/* Videos Section */}
                 {msg.videos && msg.videos.length > 0 && (
                      <div className="animate-in fade-in slide-in-from-right-4 duration-700 delay-100">
+                        <div className="flex items-center gap-2 mb-3">
+                             <PlayCircle className="w-4 h-4 text-muted" />
+                             <span className="text-xs font-medium text-muted uppercase tracking-wide">Videos</span>
+                        </div>
                         <div className="flex flex-col gap-3">
                              {msg.videos.slice(0, 3).map((vid, idx) => (
                                  <a 
@@ -369,9 +371,9 @@ const MessageItem: React.FC<MessageItemProps> = ({
                                     href={vid.link}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="flex gap-3 p-2 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-colors group"
+                                    className="flex gap-3 p-2.5 rounded-xl bg-surface hover:bg-surface-hover border border-border transition-colors group shadow-sm"
                                  >
-                                     <div className="w-24 h-16 rounded-lg bg-black/10 overflow-hidden relative shrink-0">
+                                     <div className="w-24 h-14 rounded-lg bg-black/10 overflow-hidden relative shrink-0">
                                          {vid.image ? (
                                              <img src={vid.image} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" alt="" />
                                          ) : (
@@ -381,7 +383,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
                                          )}
                                          <div className="absolute inset-0 flex items-center justify-center">
                                              <div className="w-6 h-6 rounded-full bg-black/50 flex items-center justify-center backdrop-blur-sm">
-                                                <PlayCircle className="w-4 h-4 text-white fill-current" />
+                                                <PlayCircle className="w-3 h-3 text-white fill-current" />
                                              </div>
                                          </div>
                                      </div>
@@ -470,16 +472,17 @@ export default function App() {
 
     try {
         if (isCopilotMode) {
-             // --- COPILOT FLOW ---
+             // --- COPILOT FLOW PHASE 1: UNDERSTANDING ---
              
-             // Step 1: Simulate "Understanding" delay
-             await new Promise(r => setTimeout(r, 1500));
+             // Simulate "Understanding" delay for UX
+             await new Promise(r => setTimeout(r, 1200));
              
-             // Step 2: Generate Widget (or skip)
+             // Try to generate a Copilot Widget
              const copilotStep = await generateCopilotStep(finalQuery);
              
              if (copilotStep) {
-                 // Update state: Understanding complete, waiting for widget
+                 // --- WIDGET DETECTED ---
+                 // Update state: Understanding complete, waiting for widget interaction
                  setMessages(prev => {
                      const newMsgs = [...prev];
                      const last = newMsgs[newMsgs.length - 1];
@@ -491,13 +494,14 @@ export default function App() {
                      }
                      return newMsgs;
                  });
-                 // Stop here and wait for handleCopilotAnswer
+                 
+                 // STOP here. Wait for handleCopilotAnswer to trigger the next phase.
                  setIsLoading(false); 
                  return;
              } 
              
-             // If no widget returned, just proceed to search
-             // Update state: Understanding complete
+             // If no widget needed (e.g. simple query), proceed directly to search
+             // Update state: Understanding complete -> Searching
              setMessages(prev => {
                 const newMsgs = [...prev];
                 const last = newMsgs[newMsgs.length - 1];
@@ -522,26 +526,23 @@ export default function App() {
 
   const executeSearch = async (searchQuery: string, history: Message[]) => {
       setIsLoading(true);
-
-      const needsSearch = isCopilotMode; // Only search if in Copilot Mode
       
       let results: SearchResult[] = [];
       let images: SearchResult[] = [];
       let videos: SearchResult[] = [];
 
-      if (needsSearch) {
-          try {
-              const [textRes, mediaRes] = await Promise.all([
-                  searchFast(searchQuery),
-                  searchMedia(searchQuery)
-              ]);
-              
-              results = textRes.results;
-              images = mediaRes.images;
-              videos = mediaRes.videos;
-          } catch (e) {
-              console.warn("Search failed", e);
-          }
+      try {
+          // ALWAYS fetch media alongside text for better UX (Elon Musk images etc.)
+          const [textRes, mediaRes] = await Promise.all([
+              searchFast(searchQuery),
+              searchMedia(searchQuery)
+          ]);
+          
+          results = textRes.results;
+          images = mediaRes.images;
+          videos = mediaRes.videos;
+      } catch (e) {
+          console.warn("Search failed", e);
       }
       
       // Update state with results and complete the "Searching" event
@@ -559,7 +560,7 @@ export default function App() {
                       e.message === 'Searching web' ? { ...e, status: 'completed' as const } : e
                   ) || [];
                   
-                  // If we skipped the widget, we might not have the "Searching" event yet, add it if missing
+                  // If we skipped the widget, we might not have the "Searching" event yet in the log, add it.
                   if (!newEvents.some(e => e.message === 'Searching web') && isCopilotMode) {
                       newEvents.push({ id: '2', message: 'Searching web', status: 'completed' });
                   }
@@ -616,24 +617,17 @@ export default function App() {
 
   const handleCopilotAnswer = async (answer: string) => {
       const currentMsgs = [...messages];
-      const lastMsg = currentMsgs[currentMsgs.length - 1];
-      const originalQuery = lastMsg.content; // Copilot stores original query here temporarily before it gets overwritten by stream? 
-      // Actually in my handleSearch I stored original query in 'userMsg'.
-      // Wait, 'lastMsg' is the ASSISTANT message. Its content is empty initially.
-      // I stored original query in the lastMsg.content in the previous handleSearch implementation, let's verify.
-      // Ah, I need to retrieve the User Query from the *previous* message (index - 1).
-      
       const userQuery = currentMsgs[currentMsgs.length - 2].content;
-      const refinedQuery = `${userQuery} (User Clarification: ${answer})`;
+      const refinedQuery = `${userQuery} ${answer}`;
       
-      // Update the UI: Show "Searching web" loading state
+      // Update the UI: Show "Searching web" loading state with the user's choice
       setMessages(prev => {
           const newMsgs = [...prev];
           const last = newMsgs[newMsgs.length - 1];
           if (last && last.copilotEvents) {
               last.copilotEvents = [
                   ...last.copilotEvents,
-                  { id: '2', message: 'Searching web', status: 'loading', items: [answer] }
+                  { id: '2', message: 'Searching web', status: 'loading', items: [answer !== 'Skip' ? answer : userQuery] }
               ];
           }
           return newMsgs;
@@ -642,7 +636,7 @@ export default function App() {
       setIsLoading(true);
       
       // Execute search reusing the assistant message bubble
-      // We pass the history excluding the current assistant bubble
+      // We pass the history excluding the current assistant bubble to avoid dups
       const historyForGen = currentMsgs.slice(0, -1);
       
       await executeSearch(refinedQuery, historyForGen);
@@ -779,25 +773,24 @@ export default function App() {
                         {renderInputBar(true)}
                     </div>
                   ) : (
-                    <div className="flex-1 flex flex-col relative h-full">
-                        <div className="flex-1 overflow-y-auto pb-44 pt-6 px-0 scroll-smooth">
-                          <div className="flex flex-col w-full"> 
-                            {messages.map((msg, idx) => (
-                                <MessageItem 
-                                  key={idx}
-                                  msg={msg}
-                                  isLast={idx === messages.length - 1}
-                                  isLoading={isLoading}
-                                  onCopilotAnswer={handleCopilotAnswer}
-                                  modelName={selectedModel.name}
-                                />
-                            ))}
-                            <div ref={messagesEndRef} />
-                          </div>
-                        </div>
-                        <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-background via-background to-transparent pt-12 pb-0 z-20 px-4">
-                              {renderInputBar(false)}
-                        </div>
+                    <div className="flex-1 overflow-y-auto pb-44 pt-6 px-0 scroll-smooth">
+                      <div className="flex flex-col w-full"> 
+                        {messages.map((msg, idx) => (
+                            <MessageItem 
+                              key={idx}
+                              msg={msg}
+                              isLast={idx === messages.length - 1}
+                              isLoading={isLoading}
+                              onCopilotAnswer={handleCopilotAnswer}
+                            />
+                        ))}
+                        <div ref={messagesEndRef} />
+                      </div>
+                    </div>
+                  )}
+                  {hasSearched && (
+                    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-background via-background to-transparent pt-12 pb-0 z-20 px-4">
+                        {renderInputBar(false)}
                     </div>
                   )}
                 </div>

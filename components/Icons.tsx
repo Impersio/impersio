@@ -1,16 +1,10 @@
-
 import React from 'react';
 
 export const ImpersioLogo = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    {/* Left Loop */}
-    <rect x="3.5" y="3" width="10" height="18" rx="5" />
-    {/* Right Loop (Overlapping) */}
-    <path d="M14.5 21C17.5 21 20.5 18.5 20.5 12C20.5 5.5 17.5 3 14.5 3" />
-    <path d="M14.5 3C13.5 3 12.5 3.5 11.5 4" /> 
-    <path d="M14.5 21C13.5 21 12.5 20.5 11.5 20" />
-    {/* Dot */}
-    <circle cx="8.5" cy="8" r="1.5" fill="currentColor" stroke="none" />
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <rect x="4" y="4" width="9" height="16" rx="4.5" />
+    <rect x="11" y="4" width="9" height="16" rx="4.5" />
+    <circle cx="8.5" cy="8.5" r="2" fill="currentColor" stroke="none" />
   </svg>
 );
 
