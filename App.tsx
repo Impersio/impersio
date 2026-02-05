@@ -23,6 +23,7 @@ import { authService } from './services/authService';
 import { Message, ModelOption, User, CopilotPayload, SearchResult, CopilotEvent } from './types';
 import { Discover } from './components/Discover';
 import { About } from './components/About';
+import { Finance } from './components/Finance';
 import { AuthModal } from './components/AuthModal';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { HistorySidebar } from './components/HistorySidebar';
@@ -417,7 +418,7 @@ export default function App() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const [view, setView] = useState<'home' | 'discover' | 'about'>('home');
+  const [view, setView] = useState<'home' | 'discover' | 'about' | 'finance'>('home');
   const [user, setUser] = useState<User | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -760,6 +761,7 @@ export default function App() {
 
              {view === 'about' && <About onBack={() => setView('home')} />}
              {view === 'discover' && <Discover onBack={() => setView('home')} />}
+             {view === 'finance' && <Finance />}
 
              {view === 'home' && (
                 <div className="flex-1 flex flex-col h-full relative">

@@ -4,7 +4,8 @@ import {
   Globe,
   Library,
   Plus,
-  LogIn
+  LogIn,
+  TrendingUp
 } from 'lucide-react';
 import { 
   Sidebar, 
@@ -21,8 +22,8 @@ import { ImpersioLogo } from './Icons';
 import { User } from '../types';
 
 interface AppSidebarProps {
-  currentView: 'home' | 'discover' | 'about';
-  onNavigate: (view: 'home' | 'discover' | 'about') => void;
+  currentView: 'home' | 'discover' | 'about' | 'finance';
+  onNavigate: (view: 'home' | 'discover' | 'about' | 'finance') => void;
   onNewChat: () => void;
   onToggleHistory: () => void;
   onSignIn: () => void;
@@ -79,6 +80,14 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
              <Globe className="w-5 h-5" />
          </button>
          
+         <button 
+            onClick={() => onNavigate('finance')} 
+            className={`w-10 h-10 flex items-center justify-center rounded-lg transition-colors ${currentView === 'finance' ? 'text-primary bg-surface-hover' : 'text-muted hover:text-primary'}`}
+            title="Finance"
+         >
+             <TrendingUp className="w-5 h-5" />
+         </button>
+
          <button 
             onClick={onToggleHistory} 
             className="w-10 h-10 flex items-center justify-center rounded-lg text-muted hover:text-primary transition-colors"
