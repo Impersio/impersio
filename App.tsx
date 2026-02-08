@@ -322,8 +322,6 @@ export default function App() {
                             onSelect={setSelectedModel}
                             isOpen={isModelMenuOpen}
                             onToggle={() => setIsModelMenuOpen(!isModelMenuOpen)}
-                            isPro={!!user?.is_pro}
-                            onOpenProModal={() => setIsProModalOpen(true)}
                             trigger={
                                 <button className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-primary transition-colors px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
                                     Model <ChevronDown className="w-3 h-3" />
@@ -374,8 +372,6 @@ export default function App() {
                         onSelect={setSelectedModel}
                         isOpen={isModelMenuOpen}
                         onToggle={() => setIsModelMenuOpen(!isModelMenuOpen)}
-                        isPro={!!user?.is_pro}
-                        onOpenProModal={() => setIsProModalOpen(true)}
                         trigger={
                            <button className="text-xs font-medium text-muted hover:text-primary bg-surface-hover px-2 py-1 rounded-md transition-colors flex items-center gap-1">
                               {selectedModel.name} <ChevronDown className="w-3 h-3" />

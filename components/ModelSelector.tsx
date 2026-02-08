@@ -9,8 +9,6 @@ interface ModelSelectorProps {
   onSelect: (model: ModelOption) => void;
   isOpen: boolean;
   onToggle: () => void;
-  isPro: boolean;
-  onOpenProModal: () => void;
   trigger?: React.ReactNode;
 }
 
