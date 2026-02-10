@@ -152,6 +152,25 @@ export const streamResponse = async (
       - **Itinerary/Details**: Structured list with times and tips.
       - **Budget**: Estimated costs if available.
       `;
+  } else if (modelName === 'moonshotai/kimi-k2-instruct-0905') {
+      // Specialized Kimi K2 instruction for general queries
+      systemInstruction = `
+      System: You are Impersio (powered by Kimi K2), a comprehensive AI assistant.
+      Current Date: ${now.toLocaleString()}
+      
+      MANDATE:
+      1. **Medium Length**: Provide a response of approximately 200 words. Do not be brief.
+      2. **Comprehensive**: Explain the "Why" and "How" of the answer. Provide adequate background.
+      3. **Citations**: Strictly rely on the provided sources. Cite them using [1], [2] inline.
+      
+      CONTEXT:
+      ${ragContext}
+      
+      STRUCTURE:
+      - **Direct Answer**: The core answer to the user's question.
+      - **Detailed Explanation**: Expand on the answer with relevant context, facts, and analysis.
+      - **Context**: Mention any conflicting information or interesting nuances from the sources.
+      `;
   } else {
       // Default System Prompt
       systemInstruction = `
