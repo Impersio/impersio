@@ -1,482 +1,64 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  ArrowRight,
-  ArrowUp,
-  Share2,
-  Copy,
-  RotateCcw,
-  Check,
-  ChevronDown,
   BrainCircuit,
   Zap,
   Code as CodeIcon,
   CircleDashed,
-  Globe,
-  Plus,
-  Mic,
-  MoreHorizontal,
-  Loader2,
-  Search
 } from 'lucide-react';
-import { streamResponse, analyzeQuery } from './services/geminiService';
-import { searchFast } from './services/googleSearchService';
 import { authService } from './services/authService';
-import { Message, User, SearchResult, ModelOption } from './types';
+import { User, ModelOption } from './types';
 import { Discover } from './components/Discover';
 import { Library } from './components/Library';
 import { AuthModal } from './components/AuthModal';
 import { AppSidebar } from './components/AppSidebar';
-import { MessageContent } from './components/MessageContent';
 import { useTheme } from './hooks/useTheme';
-import { createConversation, saveMessage, getConversationMessages } from './services/chatStorageService';
-import { ModelSelector } from './components/ModelSelector';
-import { MetaIcon, GeminiIcon, ImpersioLogo, SoundWaveIcon } from './components/Icons';
+import { getConversationMessages } from './services/chatStorageService';
+import { MetaIcon, GeminiIcon, ImpersioLogo } from './components/Icons';
 import { SubscriptionModal } from './components/SubscriptionModal';
-import { Thinking } from './components/Thinking';
+import { useChat } from './hooks/useChat';
+import { MessageItem } from './components/chat/MessageItem';
+import { InputBar } from './components/search/InputBar';
 
 // --- Available Models ---
 const MODELS: ModelOption[] = [
+    { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi K2', icon: Zap, description: 'Advanced Logic' },
     { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', icon: GeminiIcon, description: 'Fast & Intelligent' },
     { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', icon: GeminiIcon, description: 'High Reasoning' },
     { id: 'tngtech/deepseek-r1t2-chimera:free', name: 'DeepSeek R1t2', icon: BrainCircuit, description: 'Deep Thinking (New)', isReasoning: true },
     { id: 'openai/gpt-oss-120b', name: 'GPT OSS 120b', icon: CircleDashed, description: 'Open Reasoning', isReasoning: true },
-    { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi K2', icon: Zap, description: 'Advanced Logic' },
     { id: 'meta-llama/llama-4-scout-17b-16e-instruct', name: 'Llama 4 Scout', icon: MetaIcon, description: 'Latest Architecture' },
     { id: 'qwen/qwen3-32b', name: 'Qwen 3', icon: CodeIcon, description: 'Coding Expert' },
 ];
 
-const MessageItem: React.FC<{ 
-  msg: Message; 
-  isLast: boolean; 
-  isLoading: boolean;
-  onShare: () => void;
-  onRewrite: (query: string) => void;
-}> = ({ msg, isLast, isLoading, onShare, onRewrite }) => {
-  if (msg.role === 'user') {
-    return (
-      <div className="w-full max-w-3xl mx-auto pt-10 pb-6 px-4 animate-fade-in">
-         <h1 className="text-[32px] font-medium text-primary tracking-tight leading-tight font-sans">
-           {msg.content}
-         </h1>
-      </div>
-    );
-  }
-
-  const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
-    navigator.clipboard.writeText(msg.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="w-full max-w-3xl mx-auto pb-12 px-4 animate-fade-in font-sans">
-      <div className="flex flex-col gap-6">
-        
-        {/* Copilot / Search Progress Events */}
-        {msg.copilotEvents && msg.copilotEvents.length > 0 && !msg.content && !msg.reasoning && (
-           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 mb-2">
-                {msg.copilotEvents.map((event) => (
-                    <div key={event.id} className="flex flex-col gap-2 mb-3">
-                         <div className="flex items-center gap-2.5 text-sm text-muted">
-                            {event.status === 'loading' ? (
-                                <Loader2 className="w-4 h-4 animate-spin text-scira-accent" />
-                            ) : (
-                                <Check className="w-4 h-4 text-emerald-500" />
-                            )}
-                            <span className="font-medium">{event.message}</span>
-                         </div>
-                         {event.items && event.items.length > 0 && (
-                            <div className="pl-6 flex flex-col gap-1.5 mt-1">
-                                {event.items.map((item, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 text-xs text-muted/80">
-                                        <Search className="w-3 h-3 opacity-50" />
-                                        <span className="truncate">{item}</span>
-                                    </div>
-                                ))}
-                            </div>
-                         )}
-                    </div>
-                ))}
-           </div>
-        )}
-
-        {/* Sources Section (Above Answer) */}
-        {msg.sources && msg.sources.length > 0 && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm font-medium text-primary flex items-center gap-2">
-                 <Globe className="w-4 h-4" /> Sources
-              </span>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-              {msg.sources.slice(0, 4).map((source, idx) => (
-                <a 
-                  key={idx} href={source.link} target="_blank" rel="noreferrer"
-                  className="flex-shrink-0 w-44 flex flex-col p-3 rounded-lg bg-surface hover:bg-surface-hover border border-border transition-all h-[80px] justify-between group"
-                >
-                  <div className="text-xs font-medium text-primary line-clamp-2 leading-snug group-hover:text-scira-accent transition-colors">
-                    {source.title}
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-auto">
-                    <img 
-                      src={`https://www.google.com/s2/favicons?domain=${new URL(source.link).hostname}&sz=32`} 
-                      className="w-3 h-3 rounded-full opacity-60 grayscale group-hover:grayscale-0 transition-all" 
-                      alt=""
-                    />
-                    <div className="text-[10px] text-muted font-medium truncate flex-1">
-                      {source.displayLink}
-                    </div>
-                  </div>
-                </a>
-              ))}
-              {msg.sources.length > 4 && (
-                 <button className="flex-shrink-0 h-[80px] w-20 flex items-center justify-center rounded-lg bg-surface border border-border text-xs text-muted font-medium hover:bg-surface-hover transition-colors">
-                    View {msg.sources.length - 4} more
-                 </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Answer Section */}
-        <div className="min-h-[20px] animate-in fade-in slide-in-from-bottom-3 duration-700">
-           <div className="flex items-center gap-2 mb-3">
-              <ImpersioLogo className="w-5 h-5 text-scira-accent" />
-              <span className="text-sm font-medium text-primary">Impersio</span>
-            </div>
-          
-          {/* Reasoning / Thinking Block */}
-          {msg.reasoning && (
-             <Thinking content={msg.reasoning} isComplete={!isLoading || !isLast || !!msg.content} />
-          )}
-
-          {isLoading && isLast && !msg.content && !msg.reasoning ? (
-             <div className="w-full space-y-4 opacity-10 py-2">
-                {/* Loader Placeholder if needed */}
-             </div>
-          ) : (
-            <div className="w-full">
-              <MessageContent content={msg.content} isStreaming={isLast && isLoading} sources={msg.sources} />
-              
-              {!isLoading && msg.content && (
-                <div className="mt-6 flex items-center justify-between">
-                   <div className="flex items-center gap-2">
-                      <button onClick={onShare} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface hover:bg-surface-hover border border-border/50 text-muted hover:text-primary transition-colors text-xs font-medium">
-                         <Share2 className="w-3.5 h-3.5" /> Share
-                      </button>
-                      <button onClick={() => onRewrite(msg.content)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface hover:bg-surface-hover border border-border/50 text-muted hover:text-primary transition-colors text-xs font-medium">
-                         <RotateCcw className="w-3.5 h-3.5" /> Rewrite
-                      </button>
-                      <button onClick={handleCopy} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface hover:bg-surface-hover border border-border/50 text-muted hover:text-primary transition-colors text-xs font-medium">
-                         {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                         {copied ? 'Copied' : 'Copy'}
-                      </button>
-                   </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Related Section */}
-        {msg.relatedQuestions && msg.relatedQuestions.length > 0 && !isLoading && (
-           <div className="animate-in fade-in slide-in-from-bottom-2 duration-700 pt-4 border-t border-border/50">
-               <div className="flex items-center gap-2 mb-3">
-                  <span className="text-sm font-medium text-primary flex items-center gap-2">
-                      <CircleDashed className="w-4 h-4" /> Related
-                  </span>
-               </div>
-              <div className="flex flex-col gap-2">
-                 {msg.relatedQuestions.map((q, i) => (
-                    <button 
-                      key={i}
-                      onClick={() => onRewrite(q)}
-                      className="w-full text-left py-2.5 px-4 rounded-lg bg-surface border border-border/50 hover:bg-surface-hover text-sm font-medium text-primary transition-all flex items-center justify-between group"
-                    >
-                       <span>{q}</span>
-                       <ArrowRight className="w-4 h-4 text-muted opacity-0 -translate-x-2 group-hover:translate-x-0 group-hover:opacity-100 transition-all" />
-                    </button>
-                 ))}
-              </div>
-           </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
 export default function App() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [hasSearched, setHasSearched] = useState(false);
+  const { 
+    messages, 
+    setMessages, 
+    hasSearched, 
+    setHasSearched, 
+    isLoading, 
+    handleSearch, 
+    setActiveConversationId 
+  } = useChat();
+  
   const [query, setQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [isCopilotMode, setIsCopilotMode] = useState(false); // Pro Mode Toggle
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProModalOpen, setIsProModalOpen] = useState(false);
   const [view, setView] = useState<'home' | 'discover' | 'library' | 'profile'>('home');
   const [user, setUser] = useState<User | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelOption>(MODELS[0]);
-  const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setUser(authService.getCurrentUser()); }, []);
+  
   useEffect(() => { 
     if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' }); 
   }, [messages.length, messages[messages.length-1]?.content]);
 
-  const handleSearch = async (overrideQuery?: string) => {
-    const finalQuery = overrideQuery || query;
-    if (!finalQuery.trim() || isLoading) return;
-    
-    setIsLoading(true);
-    setQuery(''); 
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
-    if (!hasSearched) setHasSearched(true);
-
-    let currentId = activeConversationId;
-    if (!currentId) {
-       currentId = await createConversation(finalQuery);
-       setActiveConversationId(currentId);
-    }
-
-    const userMsg: Message = { role: 'user', content: finalQuery };
-    const assistantMsg: Message = { 
-        role: 'assistant', 
-        content: '', 
-        reasoning: '', 
-        sources: [], 
-        isCopilotActive: isCopilotMode,
-        copilotEvents: [] 
-    };
-    setMessages(prev => [...prev, userMsg, assistantMsg]);
-    
-    if (currentId) await saveMessage(currentId, 'user', finalQuery);
-    
-    try {
-      // 1. Analyze Intent
-      setMessages(prev => {
-        const newMsgs = [...prev];
-        const last = newMsgs[newMsgs.length - 1];
-        if (last) {
-            last.copilotEvents = [{ id: '1', status: 'loading', message: 'Identifying intent...' }];
-        }
-        return newMsgs;
-      });
-
-      const analysis = await analyzeQuery(finalQuery);
-      let results: SearchResult[] = [];
-
-      if (analysis.type === 'research') {
-           // Show searching state
-           setMessages(prev => {
-                const newMsgs = [...prev];
-                const last = newMsgs[newMsgs.length - 1];
-                if (last) {
-                    last.copilotEvents = [{ 
-                        id: '2', 
-                        status: 'loading', 
-                        message: 'Searching...', 
-                        items: analysis.queries 
-                    }];
-                }
-                return newMsgs;
-           });
-
-           // Execute searches
-           const searchPromises = analysis.queries.map(q => searchFast(q));
-           const resultsArray = await Promise.all(searchPromises);
-           
-           // Deduplicate
-           const seen = new Set<string>();
-           results = resultsArray.flatMap(r => r.results).filter(r => {
-                if (seen.has(r.link)) return false;
-                seen.add(r.link);
-                return true;
-           });
-
-           // Complete search state
-           setMessages(prev => {
-                const newMsgs = [...prev];
-                const last = newMsgs[newMsgs.length - 1];
-                if (last) {
-                    last.sources = results;
-                    last.copilotEvents = [{ id: '3', status: 'completed', message: `Found ${results.length} sources` }];
-                }
-                return newMsgs;
-           });
-      } else {
-           // Conversational - clear events
-           setMessages(prev => {
-                const newMsgs = [...prev];
-                const last = newMsgs[newMsgs.length - 1];
-                if (last) last.copilotEvents = [];
-                return newMsgs;
-           });
-      }
-
-      // 2. Generation with Selected Model
-      await streamResponse(
-        finalQuery, 
-        selectedModel.id, 
-        [], 
-        results, 
-        [], 
-        false, 
-        false, 
-        (chunk, reasoning) => {
-          setMessages(prev => {
-              const newMsgs = [...prev];
-              const last = newMsgs[newMsgs.length - 1];
-              if (last) {
-                  if (chunk) last.content = chunk;
-                  if (reasoning) last.reasoning = reasoning;
-              }
-              return newMsgs;
-          });
-        },
-        () => {},
-        (related) => {
-          setMessages(prev => {
-              const newMsgs = [...prev];
-              const last = newMsgs[newMsgs.length - 1];
-              if (last) last.relatedQuestions = related;
-              return newMsgs;
-          });
-        },
-        (fullContent, widget, related) => {
-           if (currentId) saveMessage(currentId, 'assistant', fullContent, { sources: results, relatedQuestions: related });
-        },
-        undefined,
-        (rankedSources) => {
-           setMessages(prev => {
-              const newMsgs = [...prev];
-              const last = newMsgs[newMsgs.length - 1];
-              if (last) last.sources = rankedSources;
-              return newMsgs;
-          });
-        }
-      );
-    } catch (e) {
-        console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const renderInputBar = (isInitial: boolean) => {
-    return (
-      <div className={`w-full ${isInitial ? 'max-w-[700px]' : 'max-w-3xl'} mx-auto relative z-30 px-4`}>
-        <div className={`
-          relative flex flex-col w-full bg-white dark:bg-[#202020] border border-gray-200 dark:border-gray-700 transition-all duration-300
-          ${isInitial ? 'rounded-[24px] p-4 shadow-sm hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md' : 'rounded-full p-2 px-4 shadow-elegant mb-6'}
-        `}>
-          {isInitial ? (
-             <>
-                <textarea
-                  ref={textareaRef}
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    e.target.style.height = 'auto';
-                    e.target.style.height = e.target.scrollHeight + 'px';
-                  }}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSearch(); } }}
-                  placeholder="Ask anything..."
-                  className="w-full bg-transparent text-primary placeholder:text-gray-400 font-normal focus:outline-none resize-none overflow-hidden text-lg mb-8 leading-relaxed ml-1 font-sans"
-                  style={{ minHeight: '28px' }}
-                  rows={1}
-                  autoFocus
-                />
-                
-                <div className="flex items-center justify-between mt-auto">
-                  <div className="flex items-center gap-2">
-                     <button className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                        <Plus className="w-5 h-5" />
-                     </button>
-                  </div>
-                  
-                  <div className="flex items-center gap-3">
-                     {/* Model Selector */}
-                    <div className="flex items-center gap-2">
-                       <ModelSelector
-                            selectedModel={selectedModel}
-                            models={MODELS}
-                            onSelect={setSelectedModel}
-                            isOpen={isModelMenuOpen}
-                            onToggle={() => setIsModelMenuOpen(!isModelMenuOpen)}
-                            trigger={
-                                <button className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-primary transition-colors px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800">
-                                    Model <ChevronDown className="w-3 h-3" />
-                                </button>
-                            }
-                        />
-                    </div>
-                    
-                    <div className="h-4 w-[1px] bg-gray-200 dark:bg-gray-700"></div>
-
-                    {/* Mic */}
-                    <button className="p-1.5 rounded-full text-gray-400 hover:text-primary hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                        <Mic className="w-4 h-4" />
-                    </button>
-
-                    {/* Submit Button */}
-                    <button 
-                      onClick={() => handleSearch()}
-                      disabled={!query.trim()}
-                      className={`
-                        flex items-center justify-center rounded-full w-8 h-8 transition-all duration-200
-                        ${query.trim() ? 'bg-[#1c7483] hover:bg-[#165f6b] text-white shadow-md' : 'bg-[#e8e8e6] dark:bg-[#333] text-gray-400 cursor-not-allowed'}
-                      `}
-                    >
-                      {/* Using the SoundWave icon to match screenshot */}
-                      {query.trim() ? <ArrowRight className="w-4 h-4" /> : <SoundWaveIcon className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-             </>
-          ) : (
-            <div className="flex items-center gap-3 w-full h-[46px]">
-               <button className="p-2 text-muted hover:text-primary transition-colors rounded-full shrink-0 hover:bg-surface-hover">
-                  <Plus className="w-5 h-5 opacity-60" />
-               </button>
-               <input
-                 value={query}
-                 onChange={(e) => setQuery(e.target.value)}
-                 onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
-                 placeholder="Ask follow-up..."
-                 className="flex-1 bg-transparent text-primary placeholder:text-muted/60 font-medium focus:outline-none text-[15px] font-sans"
-               />
-               <div className="flex items-center gap-3 shrink-0">
-                   {/* Model Selector in Footer */}
-                   <ModelSelector
-                        selectedModel={selectedModel}
-                        models={MODELS}
-                        onSelect={setSelectedModel}
-                        isOpen={isModelMenuOpen}
-                        onToggle={() => setIsModelMenuOpen(!isModelMenuOpen)}
-                        trigger={
-                           <button className="text-xs font-medium text-muted hover:text-primary bg-surface-hover px-2 py-1 rounded-md transition-colors flex items-center gap-1">
-                              {selectedModel.name} <ChevronDown className="w-3 h-3" />
-                           </button>
-                        }
-                  />
-                  <div className="h-4 w-px bg-border mx-1" />
-                  <button 
-                    onClick={() => handleSearch()}
-                    disabled={!query.trim()}
-                    className={`flex items-center justify-center rounded-full w-8 h-8 transition-all ${query.trim() ? 'bg-scira-accent text-white' : 'bg-border/30 text-muted'}`}
-                  >
-                    <ArrowUp className="w-4 h-4" />
-                  </button>
-               </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+  const onSearch = (overrideQuery?: string) => {
+      const q = overrideQuery || query;
+      handleSearch(q, selectedModel.id);
+      setQuery('');
   };
 
   return (
@@ -502,14 +84,29 @@ export default function App() {
                            <h1 className="text-[42px] font-medium tracking-tight text-primary mb-8 font-sans">
                               Impersio
                            </h1>
-                           {renderInputBar(true)}
+                           <InputBar 
+                              query={query} 
+                              setQuery={setQuery} 
+                              handleSearch={() => onSearch()} 
+                              isInitial={true}
+                              selectedModel={selectedModel}
+                              setSelectedModel={setSelectedModel}
+                              models={MODELS}
+                           />
                       </div>
                   </div>
                 ) : (
                   <div className="flex-1 overflow-y-auto pb-48 pt-0 px-0 scroll-smooth">
                     <div className="flex flex-col w-full"> 
                       {messages.map((msg, idx) => ( 
-                        <MessageItem key={idx} msg={msg} isLast={idx === messages.length - 1} isLoading={isLoading} onShare={() => {}} onRewrite={handleSearch} /> 
+                        <MessageItem 
+                            key={idx} 
+                            msg={msg} 
+                            isLast={idx === messages.length - 1} 
+                            isLoading={isLoading} 
+                            onShare={() => {}} 
+                            onRewrite={onSearch} 
+                        /> 
                       ))}
                       <div ref={messagesEndRef} />
                     </div>
@@ -518,7 +115,15 @@ export default function App() {
                 
                 {hasSearched && (
                   <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-background via-background/95 to-transparent pt-10 pb-6 z-20">
-                      {renderInputBar(false)}
+                      <InputBar 
+                          query={query} 
+                          setQuery={setQuery} 
+                          handleSearch={() => onSearch()} 
+                          isInitial={false}
+                          selectedModel={selectedModel}
+                          setSelectedModel={setSelectedModel}
+                          models={MODELS}
+                       />
                   </div>
                 )}
                 

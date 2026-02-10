@@ -1,9 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 import { SearchResult, WidgetData, Message, CopilotPayload } from "../types";
-import { searchFast } from './googleSearchService';
-import { streamPollinations } from './pollinationsService';
-import { streamGroq } from './groqService';
-import { streamOpenRouter } from './openRouterService';
+import { searchFast } from '../lib/search';
+import { streamPollinations } from '../services/pollinationsService';
+import { streamGroq } from '../services/groqService';
+import { streamOpenRouter } from '../services/openRouterService';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
