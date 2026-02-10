@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { PerplexityLogo } from './Icons';
@@ -21,8 +20,7 @@ export const About: React.FC<AboutProps> = ({ onBack }) => {
             <span className="font-medium">Back</span>
           </button>
           <div className="opacity-100 flex items-center gap-2">
-             <PerplexityLogo className="w-8 h-8 text-primary" />
-             <span className="text-2xl tracking-tight font-medium font-sans">perplexity</span>
+             <span className="text-2xl tracking-tight font-medium font-sans">Impersio</span>
           </div>
         </div>
       </div>
@@ -32,7 +30,7 @@ export const About: React.FC<AboutProps> = ({ onBack }) => {
         
         {/* Hero Section */}
         <div className="mb-16">
-          <h1 className="text-4xl md:text-5xl font-medium tracking-tight mb-6 text-primary">About Impersio AI</h1>
+          <h1 className="text-4xl md:text-5xl font-medium tracking-tight mb-6 text-primary">About Impersio</h1>
           <p className="text-2xl md:text-3xl text-muted font-light leading-tight">
             The most intelligent way to search for truth.
           </p>
@@ -41,7 +39,7 @@ export const About: React.FC<AboutProps> = ({ onBack }) => {
         <div className="space-y-16">
           <section>
             <p className="text-lg leading-relaxed text-primary/90 mb-6">
-              Impersio AI is a next-generation search AI built to deliver not just answers, but verified understanding.
+              Impersio is a next-generation search AI built to deliver not just answers, but verified understanding.
             </p>
             <p className="text-lg leading-relaxed text-primary/90 mb-6">
               In a world where search engines return links and most AI systems return guesses, Impersio does something different:
@@ -108,19 +106,6 @@ export const About: React.FC<AboutProps> = ({ onBack }) => {
                  <li>• Professionals who depend on accurate information</li>
                  <li>• Curious minds who demand clarity over noise</li>
                </ul>
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-2xl font-semibold mb-6">Founder</h2>
-            <div className="bg-surface border border-border rounded-2xl p-8">
-              <p className="text-lg leading-relaxed text-primary mb-4">
-                Impersio AI was created by <strong className="font-semibold text-primary">Anubhav Sapkota</strong>,
-                a solo founder and developer based in the United Arab Emirates.
-              </p>
-              <p className="text-muted leading-relaxed">
-                Anubhav began building Impersio at the age of 12, driven by a deep curiosity for artificial intelligence and a belief that search should be intelligent, transparent, and trustworthy. Impersio.me is independently built with a long-term vision focused on responsibility, learning, and innovation.
-              </p>
             </div>
           </section>
 

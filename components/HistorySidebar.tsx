@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { X, LogOut, Plus, LogIn, Info, Sun, Moon, Monitor } from 'lucide-react';
 // Fix: Import SavedConversation from types instead of services/chatStorageService

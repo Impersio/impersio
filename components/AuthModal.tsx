@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Lock, User as UserIcon, Loader2, Check, Edit3, Apple, HelpCircle } from 'lucide-react';
 import { authService } from '../services/authService';

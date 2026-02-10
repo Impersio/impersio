@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   ArrowRight,
@@ -15,9 +14,11 @@ import {
   Globe,
   Plus,
   Mic,
-  MoreHorizontal
+  MoreHorizontal,
+  Loader2,
+  Search
 } from 'lucide-react';
-import { streamResponse } from './services/geminiService';
+import { streamResponse, analyzeQuery } from './services/geminiService';
 import { searchFast } from './services/googleSearchService';
 import { authService } from './services/authService';
 import { Message, User, SearchResult, ModelOption } from './types';
@@ -72,6 +73,34 @@ const MessageItem: React.FC<{
     <div className="w-full max-w-3xl mx-auto pb-12 px-4 animate-fade-in font-sans">
       <div className="flex flex-col gap-6">
         
+        {/* Copilot / Search Progress Events */}
+        {msg.copilotEvents && msg.copilotEvents.length > 0 && !msg.content && !msg.reasoning && (
+           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 mb-2">
+                {msg.copilotEvents.map((event) => (
+                    <div key={event.id} className="flex flex-col gap-2 mb-3">
+                         <div className="flex items-center gap-2.5 text-sm text-muted">
+                            {event.status === 'loading' ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-scira-accent" />
+                            ) : (
+                                <Check className="w-4 h-4 text-emerald-500" />
+                            )}
+                            <span className="font-medium">{event.message}</span>
+                         </div>
+                         {event.items && event.items.length > 0 && (
+                            <div className="pl-6 flex flex-col gap-1.5 mt-1">
+                                {event.items.map((item, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 text-xs text-muted/80">
+                                        <Search className="w-3 h-3 opacity-50" />
+                                        <span className="truncate">{item}</span>
+                                    </div>
+                                ))}
+                            </div>
+                         )}
+                    </div>
+                ))}
+           </div>
+        )}
+
         {/* Sources Section (Above Answer) */}
         {msg.sources && msg.sources.length > 0 && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -114,7 +143,7 @@ const MessageItem: React.FC<{
         <div className="min-h-[20px] animate-in fade-in slide-in-from-bottom-3 duration-700">
            <div className="flex items-center gap-2 mb-3">
               <ImpersioLogo className="w-5 h-5 text-scira-accent" />
-              <span className="text-sm font-medium text-primary">Answer</span>
+              <span className="text-sm font-medium text-primary">Impersio</span>
             </div>
           
           {/* Reasoning / Thinking Block */}
@@ -124,14 +153,13 @@ const MessageItem: React.FC<{
 
           {isLoading && isLast && !msg.content && !msg.reasoning ? (
              <div className="w-full space-y-4 opacity-10 py-2">
-                <div className="h-4 bg-primary rounded-full w-full" />
-                <div className="h-4 bg-primary rounded-full w-[90%]" />
+                {/* Loader Placeholder if needed */}
              </div>
           ) : (
             <div className="w-full">
               <MessageContent content={msg.content} isStreaming={isLast && isLoading} sources={msg.sources} />
               
-              {!isLoading && (
+              {!isLoading && msg.content && (
                 <div className="mt-6 flex items-center justify-between">
                    <div className="flex items-center gap-2">
                       <button onClick={onShare} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface hover:bg-surface-hover border border-border/50 text-muted hover:text-primary transition-colors text-xs font-medium">
@@ -215,22 +243,79 @@ export default function App() {
     }
 
     const userMsg: Message = { role: 'user', content: finalQuery };
-    const assistantMsg: Message = { role: 'assistant', content: '', reasoning: '', sources: [], isCopilotActive: isCopilotMode };
+    const assistantMsg: Message = { 
+        role: 'assistant', 
+        content: '', 
+        reasoning: '', 
+        sources: [], 
+        isCopilotActive: isCopilotMode,
+        copilotEvents: [] 
+    };
     setMessages(prev => [...prev, userMsg, assistantMsg]);
     
     if (currentId) await saveMessage(currentId, 'user', finalQuery);
     
     try {
-      // 1. Web Search
-      const textRes = await searchFast(finalQuery);
-      let results = textRes.results;
-      
+      // 1. Analyze Intent
       setMessages(prev => {
-          const newMsgs = [...prev];
-          const last = newMsgs[newMsgs.length - 1];
-          if (last) last.sources = results;
-          return newMsgs;
+        const newMsgs = [...prev];
+        const last = newMsgs[newMsgs.length - 1];
+        if (last) {
+            last.copilotEvents = [{ id: '1', status: 'loading', message: 'Identifying intent...' }];
+        }
+        return newMsgs;
       });
+
+      const analysis = await analyzeQuery(finalQuery);
+      let results: SearchResult[] = [];
+
+      if (analysis.type === 'research') {
+           // Show searching state
+           setMessages(prev => {
+                const newMsgs = [...prev];
+                const last = newMsgs[newMsgs.length - 1];
+                if (last) {
+                    last.copilotEvents = [{ 
+                        id: '2', 
+                        status: 'loading', 
+                        message: 'Searching...', 
+                        items: analysis.queries 
+                    }];
+                }
+                return newMsgs;
+           });
+
+           // Execute searches
+           const searchPromises = analysis.queries.map(q => searchFast(q));
+           const resultsArray = await Promise.all(searchPromises);
+           
+           // Deduplicate
+           const seen = new Set<string>();
+           results = resultsArray.flatMap(r => r.results).filter(r => {
+                if (seen.has(r.link)) return false;
+                seen.add(r.link);
+                return true;
+           });
+
+           // Complete search state
+           setMessages(prev => {
+                const newMsgs = [...prev];
+                const last = newMsgs[newMsgs.length - 1];
+                if (last) {
+                    last.sources = results;
+                    last.copilotEvents = [{ id: '3', status: 'completed', message: `Found ${results.length} sources` }];
+                }
+                return newMsgs;
+           });
+      } else {
+           // Conversational - clear events
+           setMessages(prev => {
+                const newMsgs = [...prev];
+                const last = newMsgs[newMsgs.length - 1];
+                if (last) last.copilotEvents = [];
+                return newMsgs;
+           });
+      }
 
       // 2. Generation with Selected Model
       await streamResponse(

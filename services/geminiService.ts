@@ -1,4 +1,3 @@
-
 import { GoogleGenAI } from "@google/genai";
 import { SearchResult, WidgetData, Message, CopilotPayload } from "../types";
 import { searchFast } from './googleSearchService';
@@ -17,6 +16,44 @@ const generateWithRetry = async (params: any, retries = 3, delay = 2000): Promis
             return generateWithRetry(params, retries - 1, delay * 2);
         }
         throw e;
+    }
+};
+
+export const analyzeQuery = async (query: string): Promise<{ type: 'conversational' | 'research', queries: string[] }> => {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `You are a search engine query optimizer.
+            Task: Analyze the user's query and generate search queries if needed.
+            
+            Input: "${query}"
+            
+            Rules:
+            1. If the input is a greeting (hi, hello), personal question (how are you), or simple request not needing external data, set type to "conversational".
+            2. If the input requires facts, news, data, or research, set type to "research".
+            3. If "research", generate exactly 3 distinct, high-quality search queries that cover different aspects of the user's intent.
+               - Query 1: Direct answer focus.
+               - Query 2: Context/Background or related details.
+               - Query 3: Recent updates or specific data points.
+            
+            Output JSON: { "type": "conversational" | "research", "queries": ["q1", "q2", "q3"] }`,
+            config: { 
+                responseMimeType: "application/json",
+                temperature: 0.3
+            }
+        });
+        
+        const text = response.text;
+        if (!text) return { type: 'conversational', queries: [] };
+        
+        const data = JSON.parse(text);
+        return { 
+            type: data.type || 'conversational',
+            queries: Array.isArray(data.queries) ? data.queries.slice(0, 3) : []
+        };
+    } catch (e) {
+        console.error("Query analysis failed", e);
+        return { type: 'research', queries: [query] };
     }
 };
 
@@ -80,10 +117,10 @@ export const streamResponse = async (
   if (deepFindings) ragContext = `DEEP DIVE FINDINGS:\n${deepFindings}\n\n${ragContext}`;
 
   const fullPrompt = `
-  System: You are Impersio, a high-intelligence search engine.
+  System: You are Impersio, a minimalistic and high-intelligence AI search engine.
   Current Date: ${now.toLocaleString()}
   
-  Task: Answer the user's query based STRICTLY on the provided sources.
+  Task: Answer the user's query based STRICTLY on the provided sources if available.
   
   ${ragContext}
 
