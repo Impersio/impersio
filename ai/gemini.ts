@@ -25,10 +25,25 @@ export const generateSearchQueries = async (query: string): Promise<{ queries: s
         // FAST PATH PROMPT: Optimized for minimal token generation to reduce latency
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `User: "${query}"
-            Task: JSON only. 3 Google search queries to find the truth. 1 short plan (max 5 words).
-            Format: {"plan": "string", "queries": ["q1", "q2", "q3"]}`,
-            config: { responseMimeType: "application/json", temperature: 0.1 }
+            contents: `You are an expert search strategist.
+            User Query: "${query}"
+            
+            Task: Transform this into 3 distinct, keyword-optimized search queries to find the truth.
+            
+            Strategy:
+            1. **Broad & Direct**: The core topic keywords (e.g. "Nvidia stock growth reasons").
+            2. **Specific Data**: Financials, specs, or hard data (e.g. "Nvidia Q3 2025 revenue report").
+            3. **Analysis/Context**: Expert opinions or market analysis (e.g. "Nvidia AI market share analysis").
+            
+            Do not just repeat the user query. Use professional search terms.
+            Create a short "Research Plan" (max 6 words).
+            
+            Return strictly JSON:
+            {
+              "plan": "string",
+              "queries": ["query1", "query2", "query3"]
+            }`,
+            config: { responseMimeType: "application/json", temperature: 0.3 }
         });
         
         const text = response.text;

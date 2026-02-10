@@ -16,6 +16,7 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
   try {
     // Execute Exa Search
     // Optimization: Request fewer results (5) and prioritize highlights over full text
+    // We use type: "auto" (neural) for best balance of relevance and speed
     const exaResponse = await fetch("https://api.exa.ai/search", {
         method: "POST",
         headers: {
@@ -25,8 +26,7 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
         body: JSON.stringify({
             query: query,
             numResults: 5, 
-            type: "keyword",
-            useAutoprompt: false,
+            type: "auto", 
             contents: {
                 text: false, // Disabled full text for speed
                 highlights: {
