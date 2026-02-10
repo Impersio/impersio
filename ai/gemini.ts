@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { SearchResult, WidgetData, Message, CopilotPayload } from "../types";
-import { searchFast } from '../lib/search';
+import { performMultiSearch } from '../lib/search';
 import { streamPollinations } from '../services/pollinationsService';
 import { streamGroq } from '../services/groqService';
 import { streamOpenRouter } from '../services/openRouterService';
@@ -19,29 +19,27 @@ const generateWithRetry = async (params: any, retries = 3, delay = 2000): Promis
     }
 };
 
-// --- SMART QUERY GENERATOR (The "Thinking" Step) ---
+// --- SMART QUERY GENERATOR (Scira Strategy) ---
 export const generateSearchQueries = async (query: string): Promise<{ queries: string[], plan: string }> => {
     try {
-        // FAST PATH PROMPT: Optimized for minimal token generation to reduce latency
+        // Scira-style multi-query generation: 3-4 parallel vectors
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `You are an expert search strategist.
             User Query: "${query}"
             
-            Task: Transform this into 3 distinct, keyword-optimized search queries to find the truth.
+            Task: Generate 4 distinct, high-quality search queries to cover this topic comprehensively in parallel.
             
-            Strategy:
-            1. **Broad & Direct**: The core topic keywords (e.g. "Nvidia stock growth reasons").
-            2. **Specific Data**: Financials, specs, or hard data (e.g. "Nvidia Q3 2025 revenue report").
-            3. **Analysis/Context**: Expert opinions or market analysis (e.g. "Nvidia AI market share analysis").
+            Vectors:
+            1. **Broad/Core**: The main entity or concept (e.g. "Nvidia stock analysis 2025").
+            2. **Specific/Data**: Look for numbers, specs, or reports (e.g. "Nvidia Q3 2025 revenue breakdown").
+            3. **Recent/News**: Look for the absolute latest updates (e.g. "Nvidia latest news last 7 days").
+            4. **Perspective/Analysis**: Look for expert take or market consensus (e.g. "Nvidia stock buy or sell analyst ratings").
             
-            Do not just repeat the user query. Use professional search terms.
-            Create a short "Research Plan" (max 6 words).
-            
-            Return strictly JSON:
+            Output JSON:
             {
-              "plan": "string",
-              "queries": ["query1", "query2", "query3"]
+              "plan": "Short strategic summary (max 6 words)",
+              "queries": ["q1", "q2", "q3", "q4"]
             }`,
             config: { responseMimeType: "application/json", temperature: 0.3 }
         });
@@ -50,20 +48,24 @@ export const generateSearchQueries = async (query: string): Promise<{ queries: s
         if (!text) throw new Error("No response from query generator");
         
         const data = JSON.parse(text);
+        // Ensure we have at least 3 queries, max 4
+        const queries = Array.isArray(data.queries) ? data.queries.slice(0, 4) : [query];
+        
         return {
-            queries: data.queries.slice(0, 3),
-            plan: data.plan || "Searching..."
+            queries: queries,
+            plan: data.plan || "Parallel Search Strategy"
         };
     } catch (e) {
         console.error("Query generation failed", e);
-        // Fallback strategy if LLM fails
+        // Fallback strategy
         return { 
             queries: [
-                `${query} latest info`, 
-                `${query} official source`, 
-                `${query} news`
+                `${query} overview`, 
+                `${query} latest news`, 
+                `${query} analysis`,
+                `${query} facts`
             ], 
-            plan: "Direct Search..." 
+            plan: "Multi-vector Search..." 
         };
     }
 };
@@ -114,7 +116,7 @@ export const streamResponse = async (
   const now = new Date();
   const contextResults = searchResults;
 
-  // Build Context Block with Source Prioritization hints
+  // Build Context Block with Source Prioritization
   let ragContext = "";
   if (contextResults.length > 0) {
       ragContext = "VERIFIED SOURCES:\n" + 

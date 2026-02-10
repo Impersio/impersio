@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Message, SearchResult } from '../types';
-import { searchFast } from '../lib/search';
+import { performMultiSearch } from '../lib/search';
 import { streamResponse, generateSearchQueries } from '../ai/gemini';
 import { createConversation, saveMessage } from '../services/chatStorageService';
 
@@ -35,19 +35,20 @@ export const useChat = () => {
     if (currentId) await saveMessage(currentId, 'user', query);
     
     try {
-      // 1. THINKING PHASE
+      // 1. THINKING & PLANNING
       setMessages(prev => {
         const newMsgs = [...prev];
         const last = newMsgs[newMsgs.length - 1];
         if (last) {
-            last.copilotEvents = [{ id: '1', status: 'loading', message: 'Generating strategic plan...' }];
+            last.copilotEvents = [{ id: '1', status: 'loading', message: 'Analyzing request...' }];
         }
         return newMsgs;
       });
 
+      // Generate 3-4 parallel queries
       const { queries, plan } = await generateSearchQueries(query);
 
-      // 2. SHOW QUERIES
+      // 2. SEARCH EXECUTION
       setMessages(prev => {
         const newMsgs = [...prev];
         const last = newMsgs[newMsgs.length - 1];
@@ -58,30 +59,17 @@ export const useChat = () => {
              last.copilotEvents.push({ 
                 id: '2', 
                 status: 'loading', 
-                message: 'Searching specific sources...', 
+                message: `Searching ${queries.length} sources...`, 
                 items: queries 
             });
         }
         return newMsgs;
       });
 
-      // 3. EXECUTE SEARCH
-      const searchPromises = queries.map(q => searchFast(q));
-      const resultsArray = await Promise.all(searchPromises);
-      
-      const seenLinks = new Set<string>();
-      const allResults: SearchResult[] = [];
-      
-      resultsArray.forEach(res => {
-         res.results.forEach(item => {
-             if (!seenLinks.has(item.link)) {
-                 seenLinks.add(item.link);
-                 allResults.push(item);
-             }
-         });
-      });
+      // Execute Parallel Search Engine
+      const allResults = await performMultiSearch(queries);
 
-      // 4. REVIEW SOURCES
+      // 3. RESULTS PROCESSING
       setMessages(prev => {
             const newMsgs = [...prev];
             const last = newMsgs[newMsgs.length - 1];
@@ -90,12 +78,12 @@ export const useChat = () => {
                 last.copilotEvents[lastIdx].status = 'completed';
                 
                 last.sources = allResults;
-                last.copilotEvents.push({ id: '3', status: 'completed', message: `Analyzed ${allResults.length} sources` });
+                last.copilotEvents.push({ id: '3', status: 'completed', message: `Found ${allResults.length} relevant results` });
             }
             return newMsgs;
        });
 
-      // 5. GENERATE ANSWER
+      // 4. STREAM ANSWER
       await streamResponse(
         query, 
         modelId, 
