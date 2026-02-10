@@ -27,10 +27,10 @@ export const InputBar: React.FC<InputBarProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
-      <div className={`w-full ${isInitial ? 'max-w-[700px]' : 'max-w-3xl'} mx-auto relative z-30 px-4`}>
+      <div className={`w-full ${isInitial ? 'max-w-[760px]' : 'max-w-3xl'} mx-auto relative z-30 px-4`}>
         <div className={`
           relative flex flex-col w-full bg-white dark:bg-[#202020] border border-gray-200 dark:border-gray-700 transition-all duration-300
-          ${isInitial ? 'rounded-2xl p-3 pb-3 shadow-sm hover:border-gray-300 dark:hover:border-gray-600' : 'rounded-full p-2 px-4 shadow-elegant mb-6'}
+          ${isInitial ? 'rounded-2xl p-4 shadow-sm hover:border-gray-300 dark:hover:border-gray-600' : 'rounded-full p-2 px-4 shadow-elegant mb-6'}
         `}>
           {isInitial ? (
              <>
@@ -44,8 +44,8 @@ export const InputBar: React.FC<InputBarProps> = ({
                   }}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSearch(); } }}
                   placeholder="Ask anything. Type @ for sources and / for shortcuts."
-                  className="w-full bg-transparent text-primary placeholder:text-gray-400 font-normal focus:outline-none resize-none overflow-hidden text-lg mb-10 leading-relaxed ml-1 font-sans min-h-[40px]"
-                  style={{ minHeight: '28px' }}
+                  className="w-full bg-transparent text-primary placeholder:text-gray-400 font-normal focus:outline-none resize-none overflow-hidden text-lg mb-10 leading-relaxed ml-1 font-sans min-h-[44px]"
+                  style={{ minHeight: '32px' }}
                   rows={1}
                   autoFocus
                 />

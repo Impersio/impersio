@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, TrendingUp, Clock, MoreHorizontal, ArrowRight } from 'lucide-react';
+import { Trophy, TrendingUp } from 'lucide-react';
 import { searchNews } from '../services/googleSearchService';
 import { SearchResult, ModelOption } from '../types';
 import { InputBar } from './search/InputBar';
@@ -41,132 +41,79 @@ export const Sports: React.FC<SportsProps> = ({
       const resultsWithFallback = response.results.map((item) => ({
         ...item,
         // Fallback generic sports image if none provided
-        image: item.image || `https://tse2.mm.bing.net/th?q=${encodeURIComponent(item.title + ' sports')}&w=800&h=450&c=7&rs=1`
+        image: item.image || `https://tse2.mm.bing.net/th?q=${encodeURIComponent(item.title)}&w=800&h=450&c=7&rs=1`
       }));
-      setNews(resultsWithFallback.slice(0, 4));
+      setNews(resultsWithFallback);
       setLoading(false);
     };
 
     fetchSportsNews();
   }, []);
 
-  const getFaviconUrl = (url: string) => {
-    try {
-      return `https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32`;
-    } catch {
-      return '';
-    }
-  };
-
-  const formatTime = (dateStr?: string) => {
-    if (!dateStr) return "Recently";
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    return `${diffInHours} hours ago`;
-  };
-
-  // Custom search handler to ensure we contextually search for sports if the user didn't specify
-  const handleSportsSearch = () => {
-    if (!query.trim()) return;
-    // We pass the query back up to App.tsx to handle the chat transition
-    onSearch(query);
-  };
-
   return (
-    <div className="flex flex-col h-full bg-background text-primary font-sans animate-fade-in overflow-y-auto">
-      <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-[600px] w-full max-w-5xl mx-auto">
-          
-          {/* Hero Section */}
-          <div className="w-full max-w-3xl flex flex-col items-center mb-12">
-               {/* Branding */}
-               <div className="flex items-center justify-center gap-3 mb-10 select-none">
-                   <h1 className="text-5xl md:text-6xl tracking-tight text-primary font-sans font-medium">
-                      impersio
+    <div className="flex flex-col h-full bg-background text-primary font-sans animate-fade-in relative">
+        <div className="flex-1 overflow-y-auto pb-40">
+            <div className="max-w-[760px] mx-auto px-4 py-12 md:py-20">
+                
+                {/* Title */}
+                <div className="flex items-center justify-center gap-3 mb-10">
+                   <h1 className="text-4xl md:text-5xl font-medium tracking-tight text-center">
+                     <span className="text-primary">impersio</span> <span className="text-muted font-normal font-serif">sports</span>
                    </h1>
-                   <span className="text-5xl md:text-6xl font-light text-muted font-serif italic tracking-tight">
-                      sports
-                   </span>
-               </div>
-               
-               {/* Input Bar - Reusing standard but with specific placeholder */}
-               <div className="w-full">
-                   <InputBar 
-                      query={query} 
-                      setQuery={setQuery} 
-                      handleSearch={handleSportsSearch} 
-                      isInitial={true}
-                      selectedModel={selectedModel}
-                      setSelectedModel={setSelectedModel}
-                      models={models}
-                   />
-                   <div className="text-center mt-6">
-                        <div className="flex flex-wrap justify-center gap-3 text-sm text-muted">
-                            <button onClick={() => onSearch('winter olympics live stream today')} className="hover:text-primary transition-colors flex items-center gap-1">
-                                <SearchIcon className="w-3 h-3" /> winter olympics live stream today
-                            </button>
-                            <button onClick={() => onSearch('nba games on tv tonight')} className="hover:text-primary transition-colors flex items-center gap-1">
-                                <SearchIcon className="w-3 h-3" /> nba games on tv tonight
-                            </button>
-                            <button onClick={() => onSearch('usa vs canada women\'s hockey')} className="hover:text-primary transition-colors flex items-center gap-1">
-                                <SearchIcon className="w-3 h-3" /> usa vs canada women's hockey
-                            </button>
+                </div>
+
+                <div className="mb-12">
+                     <InputBar 
+                        query={query} 
+                        setQuery={setQuery} 
+                        handleSearch={() => onSearch(query)} 
+                        isInitial={true}
+                        selectedModel={selectedModel}
+                        setSelectedModel={setSelectedModel}
+                        models={models}
+                    />
+                </div>
+
+                <div className="space-y-6">
+                    <div className="flex items-center gap-2 mb-4">
+                        <TrendingUp className="w-5 h-5 text-[#1c7483]" />
+                        <h2 className="text-lg font-medium">Trending Sports News</h2>
+                    </div>
+
+                    {loading ? (
+                        <div className="grid gap-4 animate-pulse">
+                            {[1,2,3].map(i => <div key={i} className="h-24 bg-surface rounded-xl border border-border" />)}
                         </div>
-                   </div>
-               </div>
-          </div>
-
-          {/* What's Happening Section */}
-          <div className="w-full max-w-[1000px] mt-8">
-              <div className="flex items-center justify-between mb-6 px-2">
-                  <h2 className="text-lg font-medium text-primary">What's Happening</h2>
-                  <span className="text-xs text-muted">Updated just now</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {loading ? (
-                      [1,2,3,4].map(i => (
-                          <div key={i} className="h-64 bg-surface rounded-xl border border-border animate-pulse"></div>
-                      ))
-                  ) : (
-                      news.map((item, idx) => (
-                          <a 
-                            key={idx}
-                            href={item.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="group flex flex-col h-full bg-surface border border-border rounded-xl p-4 hover:bg-surface-hover hover:shadow-md transition-all duration-300"
-                          >
-                              <div className="flex items-center gap-2 mb-3">
-                                  <div className="w-4 h-4 rounded-full bg-background overflow-hidden">
-                                      <img src={getFaviconUrl(item.link)} className="w-full h-full object-cover" alt="" />
-                                  </div>
-                                  <span className="text-xs text-muted font-medium truncate">{formatTime(item.publishedDate)}</span>
-                              </div>
-                              
-                              <h3 className="text-sm font-semibold text-primary leading-snug mb-2 line-clamp-3 group-hover:text-[#1c7483] transition-colors">
-                                  {item.title}
-                              </h3>
-                              
-                              <p className="text-xs text-muted line-clamp-3 mb-4 leading-relaxed opacity-80">
-                                  {item.snippet}
-                              </p>
-                          </a>
-                      ))
-                  )}
-              </div>
-          </div>
-      </div>
+                    ) : (
+                        <div className="grid gap-4">
+                            {news.slice(0, 5).map((item, idx) => (
+                                <a 
+                                    key={idx}
+                                    href={item.link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex gap-4 p-4 bg-surface hover:bg-surface-hover border border-border rounded-xl transition-all hover:shadow-sm group"
+                                >
+                                    <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
+                                        <img src={item.image} className="w-full h-full object-cover" alt="" />
+                                    </div>
+                                    <div className="flex flex-col justify-between py-1">
+                                        <h3 className="font-medium text-primary line-clamp-2 group-hover:text-[#1c7483] transition-colors">
+                                            {item.title}
+                                        </h3>
+                                        <div className="flex items-center gap-2 text-xs text-muted">
+                                            <span>{item.displayLink}</span>
+                                            <span>•</span>
+                                            <span>{item.publishedDate || 'Today'}</span>
+                                        </div>
+                                    </div>
+                                </a>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
     </div>
   );
 };
-
-const SearchIcon = ({ className }: { className?: string }) => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-    </svg>
-);

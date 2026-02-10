@@ -1,11 +1,10 @@
-
 import { SearchResult } from "../types";
 
 // Access keys from environment variables configured in vite.config.ts
 const getTavilyKey = () => process.env.TAVILY_API_KEY || "";
 const getExaKey = () => process.env.EXA_API_KEY || "";
 
-// Optimized for speed < 2s using Exa for text
+// Optimized for speed < 1s using Exa highlights
 export const searchFast = async (query: string): Promise<{ results: SearchResult[] }> => {
   const exaKey = getExaKey();
   
@@ -16,6 +15,7 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
 
   try {
     // Execute Exa Search
+    // Optimization: Request fewer results (5) and prioritize highlights over full text
     const exaResponse = await fetch("https://api.exa.ai/search", {
         method: "POST",
         headers: {
@@ -24,13 +24,13 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
         },
         body: JSON.stringify({
             query: query,
-            numResults: 6, // Reduced for speed and relevance
+            numResults: 5, 
             type: "keyword",
             useAutoprompt: false,
             contents: {
-                text: true,
+                text: false, // Disabled full text for speed
                 highlights: {
-                    numSentences: 2,
+                    numSentences: 3, // Sufficient for RAG
                     query: query
                 }
             }
@@ -45,7 +45,8 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
         let hostname = 'Source';
         try { hostname = new URL(item.url).hostname; } catch (e) {}
         
-        const snippet = item.highlights?.[0] || item.text?.substring(0, 300) || "";
+        // Use highlight or summary
+        const snippet = item.highlights?.[0] || item.text?.substring(0, 200) || "";
 
         return {
             title: item.title || hostname,
@@ -56,7 +57,6 @@ export const searchFast = async (query: string): Promise<{ results: SearchResult
         };
     }) || [];
 
-    // Return results (no separate image search)
     return { results };
 
   } catch (error) {
@@ -77,7 +77,7 @@ export const searchWeb = async (query: string, mode: string = 'web'): Promise<{ 
     let includeDomains: string[] | undefined = undefined;
     let topic = "general";
     let searchDepth = "basic"; 
-    let maxResults = 6; 
+    let maxResults = 5; // Reduced from 6 for slight speed bump
 
     if (mode === 'x') {
       includeDomains = ['twitter.com', 'x.com'];
@@ -85,7 +85,7 @@ export const searchWeb = async (query: string, mode: string = 'web'): Promise<{ 
       includeDomains = ['reddit.com'];
     } else if (mode === 'research') {
       searchDepth = "advanced";
-      maxResults = 10;
+      maxResults = 8;
     }
 
     const response = await fetch("https://api.tavily.com/search", {
@@ -97,7 +97,7 @@ export const searchWeb = async (query: string, mode: string = 'web'): Promise<{ 
         api_key: tavilyKey,
         query: query,
         search_depth: searchDepth,
-        include_images: false, // Explicitly disabled here, we use searchMedia for images
+        include_images: false,
         max_results: maxResults, 
         include_domains: includeDomains,
         topic: topic
@@ -129,7 +129,6 @@ export const searchWeb = async (query: string, mode: string = 'web'): Promise<{ 
   }
 };
 
-// Dedicated function for populating the Media Gallery (Images & Videos)
 export const searchMedia = async (query: string): Promise<{ images: SearchResult[], videos: SearchResult[] }> => {
     const tavilyKey = getTavilyKey();
     if (!tavilyKey) return { images: [], videos: [] };
@@ -152,7 +151,6 @@ export const searchMedia = async (query: string): Promise<{ images: SearchResult
 
         const data = await response.json();
         
-        // Tavily returns images in a separate 'images' array
         const images: SearchResult[] = (data.images || []).map((img: any) => ({
             title: img.description || "Image",
             link: img.url,
@@ -161,15 +159,6 @@ export const searchMedia = async (query: string): Promise<{ images: SearchResult
             image: img.url 
         }));
 
-        // We can simulate "videos" by filtering results for youtube/vimeo or if Tavily returns them
-        // For now, we'll try to find video-like results in the text results or use a specific query if needed.
-        // A simple heuristic: check if we have any youtube links in the main results, 
-        // OR perform a quick secondary search for videos.
-        
-        // Let's do a quick video specific search if the user asked for videos, 
-        // or just rely on the main search results having video links.
-        // For the UI "Thumbnail" requirement, we'll try to map standard YouTube links to thumbnails.
-        
         const videos: SearchResult[] = (data.results || [])
             .filter((r: any) => r.url.includes('youtube.com') || r.url.includes('vimeo.com'))
             .map((r: any) => {

@@ -22,27 +22,13 @@ const generateWithRetry = async (params: any, retries = 3, delay = 2000): Promis
 // --- SMART QUERY GENERATOR (The "Thinking" Step) ---
 export const generateSearchQueries = async (query: string): Promise<{ queries: string[], plan: string }> => {
     try {
-        // This prompt forces the "Official -> News -> Reviews" strategy
+        // FAST PATH PROMPT: Optimized for minimal token generation to reduce latency
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
-            contents: `You are an expert search strategist.
-            User Query: "${query}"
-            
-            Task: Break this down into 3 distinct Google search queries to get the absolute truth.
-            
-            Strategy:
-            1. **Query 1 (Official/Facts):** Find the official website, documentation, or primary source. Use terms like "official site", "specs", "whitepaper".
-            2. **Query 2 (Consensus/Reviews):** Find what real people say. Use terms like "reddit", "reviews", "problems", "vs".
-            3. **Query 3 (News/Updates):** Check for very recent changes or news in 2024/2025.
-            
-            Create a short "Research Plan" (max 6 words).
-            
-            Return strictly JSON:
-            {
-              "plan": "string",
-              "queries": ["query1", "query2", "query3"]
-            }`,
-            config: { responseMimeType: "application/json", temperature: 0.3 }
+            contents: `User: "${query}"
+            Task: JSON only. 3 Google search queries to find the truth. 1 short plan (max 5 words).
+            Format: {"plan": "string", "queries": ["q1", "q2", "q3"]}`,
+            config: { responseMimeType: "application/json", temperature: 0.1 }
         });
         
         const text = response.text;
@@ -51,18 +37,18 @@ export const generateSearchQueries = async (query: string): Promise<{ queries: s
         const data = JSON.parse(text);
         return {
             queries: data.queries.slice(0, 3),
-            plan: data.plan || "Deep Research Strategy"
+            plan: data.plan || "Searching..."
         };
     } catch (e) {
         console.error("Query generation failed", e);
         // Fallback strategy if LLM fails
         return { 
             queries: [
-                `${query} official specs`, 
-                `${query} reddit reviews problems`, 
-                `${query} latest news 2025`
+                `${query} latest info`, 
+                `${query} official source`, 
+                `${query} news`
             ], 
-            plan: "Triangulating official data and reviews..." 
+            plan: "Direct Search..." 
         };
     }
 };
@@ -133,18 +119,38 @@ export const streamResponse = async (
       effectiveModelId = 'moonshotai/kimi-k2-instruct-0905';
       
       systemInstruction = `
-      System: You are Impersio Sports, an expert sports analyst AI powered by Exa and Kimi K2.
+      System: You are Impersio Sports, an expert sports analyst.
       Current Date: ${now.toLocaleString()}
       
-      MISSION: Provide the latest sports scores, detailed game analysis, player statistics, and injury updates based on the provided search results.
+      CRITICAL: Give the direct score/answer FIRST. No preamble.
       
-      TONE: Energetic, data-driven, precise, and authoritative.
+      CONTEXT:
+      ${ragContext}
       
       FORMAT:
-      - **Live/Recent Scores**: Always put the score line first in bold if applicable (e.g., **Lakers 112 - Warriors 104**).
-      - **Key Stats**: Use bullet points for key player stats.
-      - **Analysis**: Provide a brief tactical analysis or context.
-      - **Citations**: Strictly cite sources as [1], [2].
+      1. **Direct Answer**: Score or key fact immediately.
+      2. **Details**: Bullet points for stats/context.
+      3. **Sources**: Cite [1] at end of sentences.
+      `;
+  } else if (modelName === 'impersio-travel') {
+      effectiveModelId = 'moonshotai/kimi-k2-instruct-0905';
+      
+      systemInstruction = `
+      System: You are Impersio Travel, a world-class travel planner and guide.
+      Current Date: ${now.toLocaleString()}
+      
+      MANDATE:
+      1. **Plan First**: If asked for an itinerary, provide a day-by-day breakdown immediately.
+      2. **Vibe**: Be inspiring, practical, and knowledgeable. Use emojis for locations (e.g. 🗼 Tokyo).
+      3. **Sources**: Strictly rely on provided sources for opening hours/prices.
+      
+      CONTEXT:
+      ${ragContext}
+      
+      STRUCTURE:
+      - **Summary**: 2 sentences on why this destination is great.
+      - **Itinerary/Details**: Structured list with times and tips.
+      - **Budget**: Estimated costs if available.
       `;
   } else {
       // Default System Prompt
@@ -152,32 +158,18 @@ export const streamResponse = async (
       System: You are Impersio, a high-intelligence AI search engine.
       Current Date: ${now.toLocaleString()}
       
-      ${isResearch ? `
-      TASK: Answer the user's question comprehensively (approx 350-400 words).
+      MANDATE:
+      1. **ANSWER FIRST**: Provide the direct, correct answer in the very first sentence. Do not say "Based on the search results" or "Here is what I found". Just state the answer.
+      2. **NO HALLUCINATION**: You must strictly rely on the "VERIFIED SOURCES" provided. If the answer is not in the sources, say "I couldn't find verified information."
+      3. **CITATIONS**: You MUST cite your sources using [1], [2] immediately after the fact.
       
       CONTEXT:
       ${ragContext}
       
-      STRICT RESPONSE RULES:
-      1. **Trust Hierarchy**: 
-         - First, state the *Official* facts/specs from primary sources.
-         - Second, contrast this with *User Reviews/Consensus* (Reddit, Forums).
-         - Third, mention any recent *News/Updates*.
-      
-      2. **Format & Length**:
-         - **Executive Summary**: 3-4 sentences answering the core question directly.
-         - **Detailed Sections**: Use Markdown headers (###) to organize the deep dive.
-         - **Length**: The body must be detailed. Do not be brief. Explain the "Why" and "How".
-      
-      3. **Citations**: 
-         - Every single claim must be cited inline using [1], [2].
-         - Example: "The device features a 50MP sensor [1], though users report low-light issues [3]."
-      
-      4. **Tone**: Objective, journalistic, and dense with information.
-      ` : `
-      TASK: Answer the user's conversational query politely.
-      - Keep it under 3 sentences unless asked for more.
-      `}
+      STRUCTURE:
+      - **Direct Answer**: The immediate truth.
+      - **Details**: Explanation, nuance, or context.
+      - **Sources**: Mention conflicting or backup sources if relevant at the end.
       `;
   }
 
@@ -198,7 +190,7 @@ export const streamResponse = async (
       await streamFn();
   };
   
-  // GROQ MODELS (Includes Kimi K2 and Impersio Sports)
+  // GROQ MODELS (Includes Kimi K2 and Impersio Sports/Travel)
   const groqModels = [
       'openai/gpt-oss-120b',
       'moonshotai/kimi-k2-instruct-0905',

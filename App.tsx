@@ -10,7 +10,8 @@ import {
   Trash2,
   Pencil,
   Plus,
-  Trophy
+  Trophy,
+  Plane
 } from 'lucide-react';
 import { authService } from './services/authService';
 import { User, ModelOption } from './types';
@@ -26,10 +27,12 @@ import { useChat } from './hooks/useChat';
 import { MessageItem } from './components/chat/MessageItem';
 import { InputBar } from './components/search/InputBar';
 import { Sports } from './components/Sports';
+import { Travel } from './components/Travel';
 
 // --- Available Models ---
 const MODELS: ModelOption[] = [
     { id: 'impersio-sports', name: 'Impersio Sports', icon: Trophy, description: 'Live Scores & Analysis' },
+    { id: 'impersio-travel', name: 'Impersio Travel', icon: Plane, description: 'Travel Planner (Kimi K2)' },
     { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi K2', icon: Zap, description: 'Advanced Logic' },
     { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash', icon: GeminiIcon, description: 'Fast & Intelligent' },
     { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro', icon: GeminiIcon, description: 'High Reasoning' },
@@ -54,9 +57,9 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProModalOpen, setIsProModalOpen] = useState(false);
-  const [view, setView] = useState<'home' | 'discover' | 'library' | 'profile' | 'sports'>('home');
+  const [view, setView] = useState<'home' | 'discover' | 'library' | 'profile' | 'sports' | 'travel'>('home');
   const [user, setUser] = useState<User | null>(null);
-  const [selectedModel, setSelectedModel] = useState<ModelOption>(MODELS[1]); // Default to Kimi K2
+  const [selectedModel, setSelectedModel] = useState<ModelOption>(MODELS[2]); // Default to Kimi K2
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar toggle
 
@@ -82,9 +85,8 @@ export default function App() {
 
   const onSearch = (overrideQuery?: string) => {
       const q = overrideQuery || query;
-      // If searching from Sports view, switch to home view to show chat results
-      // In a real app, we might keep the sports layout, but for now we unify the chat interface
-      if (view === 'sports') {
+      // If searching from specialized views, switch to home view to show chat results
+      if (view === 'sports' || view === 'travel') {
           setView('home');
       }
       handleSearch(q, selectedModel.id);
@@ -96,7 +98,7 @@ export default function App() {
       setHasSearched(false); 
       setActiveConversationId(null); 
       setView('home'); 
-      setSelectedModel(MODELS[1]);
+      setSelectedModel(MODELS[2]);
       setChatTitle('New Chat');
   };
 
@@ -122,7 +124,7 @@ export default function App() {
       
       <main className="flex-1 flex flex-col min-w-0 relative h-full bg-background transition-all duration-300">
            
-           {/* Header - Only visible when searched or in specific views, NOT in sports view */}
+           {/* Header - Only visible when searched or in specific views, NOT in sports/travel view */}
            {hasSearched && view === 'home' && (
                <div className="sticky top-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-md border-b border-transparent">
                    <div className="flex items-center justify-between px-4 py-2 h-14">
@@ -199,9 +201,9 @@ export default function App() {
                       </div>
 
                       <div className="w-full max-w-2xl flex flex-col items-center -mt-20 animate-fade-in relative z-10">
-                           <div className="flex items-center gap-3 mb-8">
-                               <h1 className="text-5xl md:text-6xl font-medium tracking-tighter text-primary font-sans">
-                                  impersio
+                           <div className="flex items-center gap-3 mb-10">
+                               <h1 className="text-6xl md:text-7xl font-medium tracking-tighter text-primary font-sans">
+                                  Impersio
                                </h1>
                                {user?.is_pro && (
                                    <span className="px-2 py-0.5 rounded-lg bg-gradient-to-br from-indigo-500/10 to-purple-500/10 border border-indigo-500/20 text-indigo-500 text-xs font-bold uppercase tracking-wider mt-2">
@@ -259,6 +261,16 @@ export default function App() {
            {view === 'library' && <Library onSelectThread={(id) => { setActiveConversationId(id); getConversationMessages(id).then(msgs => { setMessages(msgs); setHasSearched(true); setView('home'); }); }} />}
            {view === 'sports' && (
               <Sports 
+                onSearch={onSearch} 
+                query={query} 
+                setQuery={setQuery}
+                selectedModel={selectedModel}
+                setSelectedModel={setSelectedModel}
+                models={MODELS}
+              />
+           )}
+           {view === 'travel' && (
+              <Travel
                 onSearch={onSearch} 
                 query={query} 
                 setQuery={setQuery}
