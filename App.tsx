@@ -28,6 +28,7 @@ import { MessageItem } from './components/chat/MessageItem';
 import { InputBar } from './components/search/InputBar';
 import { Sports } from './components/Sports';
 import { Travel } from './components/Travel';
+import { PredictionPage } from './components/PredictionPage';
 
 // --- Available Models ---
 const MODELS: ModelOption[] = [
@@ -57,7 +58,7 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProModalOpen, setIsProModalOpen] = useState(false);
-  const [view, setView] = useState<'home' | 'discover' | 'library' | 'profile' | 'sports' | 'travel'>('home');
+  const [view, setView] = useState<'home' | 'discover' | 'library' | 'profile' | 'sports' | 'travel' | 'predict'>('home');
   const [user, setUser] = useState<User | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelOption>(MODELS[2]); // Default to Kimi K2
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -279,6 +280,7 @@ export default function App() {
                 models={MODELS}
               />
            )}
+           {view === 'predict' && <PredictionPage />}
            {view === 'profile' && (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
                  <div className="w-20 h-20 rounded-full bg-surface flex items-center justify-center mb-8 border border-border shadow-sm">

@@ -13,7 +13,8 @@ import {
   LayoutGrid,
   Cpu,
   Loader2,
-  RefreshCw
+  RefreshCw,
+  MoreHorizontal
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -25,7 +26,10 @@ import {
   ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { searchNews } from '../services/googleSearchService';
+import { generatePrediction } from '../services/geminiService';
 import { SearchResult } from '../types';
 
 // --- Real-Time Data Services ---
@@ -125,6 +129,10 @@ export const Finance: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'stocks' | 'crypto' | 'predict'>('stocks');
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  
+  const [prediction, setPrediction] = useState<string | null>(null);
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   // Refs for intervals to prevent memory leaks
   const pollingRef = useRef<number | null>(null);
@@ -198,11 +206,20 @@ export const Finance: React.FC = () => {
       });
       setIsSearchOpen(false);
       setSearchQuery('');
+      setPrediction(null);
     } else {
       // Logic for crypto symbols if yahoo fails (e.g. search Binance)
       alert(`Symbol "${searchQuery.toUpperCase()}" not found on public index.`);
     }
     setIsLoading(false);
+  };
+
+  const handlePredict = async () => {
+    setIsPredicting(true);
+    setPrediction(null);
+    const result = await generatePrediction(activeSymbol.symbol, activeSymbol.name, chartData, news);
+    setPrediction(result);
+    setIsPredicting(false);
   };
 
   const isPositive = activeSymbol.change >= 0;
@@ -280,16 +297,36 @@ export const Finance: React.FC = () => {
             >
                 <Coins className="w-4 h-4" /> Crypto
             </button>
-            <button 
-                onClick={() => setActiveTab('predict')}
-                className={`px-5 py-2.5 rounded-full text-sm font-medium flex items-center gap-2 transition-all ${
-                    activeTab === 'predict' 
-                        ? 'bg-[#21808D]/15 text-[#21808D] border border-[#21808D]/30 shadow-sm' 
-                        : 'bg-surface/50 text-muted hover:text-primary hover:bg-surface border border-transparent'
-                }`}
-            >
-                <Target className="w-4 h-4" /> Predict
-            </button>
+            <div className="relative">
+                <button 
+                    onClick={() => setIsMoreOpen(!isMoreOpen)}
+                    className={`px-5 py-2.5 rounded-full text-sm font-medium flex items-center gap-2 transition-all ${
+                        activeTab === 'predict' || isMoreOpen
+                            ? 'bg-[#21808D]/15 text-[#21808D] border border-[#21808D]/30 shadow-sm' 
+                            : 'bg-surface/50 text-muted hover:text-primary hover:bg-surface border border-transparent'
+                    }`}
+                >
+                    <MoreHorizontal className="w-4 h-4" /> More
+                </button>
+                
+                {isMoreOpen && (
+                    <>
+                        <div className="fixed inset-0 z-10" onClick={() => setIsMoreOpen(false)} />
+                        <div className="absolute top-full left-0 mt-2 w-48 bg-surface border border-border rounded-xl shadow-lg z-20 p-1 animate-in fade-in zoom-in-95 duration-200">
+                            <button 
+                                onClick={() => { setActiveTab('predict'); setIsMoreOpen(false); }}
+                                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                                    activeTab === 'predict' 
+                                        ? 'bg-[#21808D]/10 text-[#21808D]' 
+                                        : 'text-muted hover:text-primary hover:bg-surface-hover'
+                                }`}
+                            >
+                                <Target className="w-4 h-4" /> Predict
+                            </button>
+                        </div>
+                    </>
+                )}
+            </div>
         </div>
 
         {/* Real-Time Market Overview Grid */}
@@ -371,10 +408,55 @@ export const Finance: React.FC = () => {
                 </div>
              </div>
 
-             {/* Chart Viewport */}
-             <div className="space-y-8">
-                {/* Time Range Selector */}
-                <div className="flex items-center justify-between pb-6 border-b border-border/40">
+             {/* Chart Viewport or Predict Viewport */}
+             {activeTab === 'predict' ? (
+                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                     <div className="bg-[#21808D]/5 border border-[#21808D]/20 rounded-2xl p-6">
+                         <div className="flex items-start gap-4">
+                             <div className="p-3 bg-[#21808D]/10 rounded-xl">
+                                 <Target className="w-6 h-6 text-[#21808D]" />
+                             </div>
+                             <div>
+                                 <h3 className="text-lg font-bold text-primary mb-2">AI Trend Prediction</h3>
+                                 <p className="text-sm text-muted mb-4 leading-relaxed">
+                                     Our AI model analyzes historical price action and synthesizes sentiment from 100-200 recent news sources to provide a short-term trend prediction for {activeSymbol.name}.
+                                 </p>
+                                 <div className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-500/10 inline-block px-3 py-1.5 rounded-lg border border-amber-500/20 mb-6">
+                                     Disclaimer: Predictions are for informational purposes only and do not constitute financial advice.
+                                 </div>
+                                 
+                                 {!prediction && !isPredicting && (
+                                     <button 
+                                         onClick={handlePredict}
+                                         className="flex items-center gap-2 px-6 py-3 bg-[#21808D] hover:bg-[#1c7483] text-white rounded-xl text-sm font-bold transition-all shadow-md active:scale-95"
+                                     >
+                                         <Cpu className="w-4 h-4" />
+                                         Generate Prediction
+                                     </button>
+                                 )}
+                             </div>
+                         </div>
+                     </div>
+
+                     {isPredicting && (
+                         <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                             <Loader2 className="w-8 h-8 animate-spin text-[#21808D]" />
+                             <p className="text-sm font-medium text-muted animate-pulse">Gathering 100-200 sources and analyzing trends...</p>
+                         </div>
+                     )}
+
+                     {prediction && !isPredicting && (
+                         <div className="bg-surface border border-border rounded-2xl p-6 md:p-8 shadow-sm prose prose-sm md:prose-base dark:prose-invert max-w-none">
+                             <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                 {prediction}
+                             </ReactMarkdown>
+                         </div>
+                     )}
+                 </div>
+             ) : (
+                 <div className="space-y-8">
+                    {/* Time Range Selector */}
+                    <div className="flex items-center justify-between pb-6 border-b border-border/40">
                     <div className="flex gap-4">
                         {PERIODS.map(p => (
                             <button
@@ -472,6 +554,7 @@ export const Finance: React.FC = () => {
                     )}
                 </div>
              </div>
+             )}
         </div>
 
         {/* Global Finance News */}

@@ -94,6 +94,46 @@ export const generateCopilotStep = async (query: string): Promise<CopilotPayload
     }
 };
 
+export const generatePrediction = async (symbol: string, name: string, history: any[], news: SearchResult[]): Promise<string> => {
+    try {
+        const historyStr = history.length > 0 
+            ? `Recent Price History (last 20 data points):\n${history.slice(-20).map(h => `${h.displayTime}: ${h.value}`).join('\n')}`
+            : "No specific price history available (General Trend Analysis).";
+
+        const newsStr = news.map(n => `- ${n.title}: ${n.snippet}`).join('\n');
+        
+        const prompt = `
+        You are an expert AI analyst specializing in market trends, product launches, and global developments.
+        Analyze the short-term trend and future outlook for: "${name}" (Context/Symbol: ${symbol}).
+        
+        ${historyStr}
+        
+        Recent Intelligence (simulating analysis of 500 sources based on 20 distinct search queries):
+        ${newsStr}
+        
+        Provide a comprehensive trend analysis and prediction.
+        Format your response in Markdown. Include sections for:
+        - **Executive Summary**: The bottom line.
+        - **Trend Analysis**: What is happening right now?
+        - **Sentiment Overview**: What are people/experts saying?
+        - **Upcoming Developments**: What to expect next (products, events, shifts).
+        - **Prediction/Outlook**: Where is this heading in the short-to-medium term?
+        
+        Keep it professional, analytical, and forward-looking.
+        `;
+        
+        const response = await ai.models.generateContent({
+            model: 'gemini-3-pro-preview',
+            contents: prompt,
+        });
+        
+        return response.text || "Unable to generate prediction.";
+    } catch (e) {
+        console.error("Prediction error:", e);
+        return "An error occurred while generating the prediction.";
+    }
+};
+
 export const streamResponse = async (
   prompt: string, 
   modelName: string, 

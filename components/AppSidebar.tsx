@@ -13,14 +13,15 @@ import {
   GraduationCap,
   Scale,
   Settings,
-  TrendingUp
+  TrendingUp,
+  Target
 } from 'lucide-react';
 import { ImpersioLogo } from './Icons';
 import { User } from '../types';
 
 interface AppSidebarProps {
-  currentView: 'home' | 'discover' | 'library' | 'profile' | 'sports' | 'travel';
-  onNavigate: (view: 'home' | 'discover' | 'library' | 'profile' | 'sports' | 'travel') => void;
+  currentView: 'home' | 'discover' | 'library' | 'profile' | 'sports' | 'travel' | 'predict';
+  onNavigate: (view: 'home' | 'discover' | 'library' | 'profile' | 'sports' | 'travel' | 'predict') => void;
   onNewChat: () => void;
   onSignIn: () => void;
   user: User | null;
@@ -104,15 +105,26 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                onClick={() => setIsMoreOpen(!isMoreOpen)}
                className="flex flex-col items-center gap-1 w-full"
             >
-              <div className={`p-1.5 rounded-lg transition-colors ${isMoreOpen || currentView === 'sports' || currentView === 'travel' ? 'bg-[#e8e8e6] dark:bg-[#333] text-primary' : 'text-muted hover:text-primary hover:bg-[#f3f3ee] dark:hover:bg-[#2A2A2A]'}`}>
+              <div className={`p-1.5 rounded-lg transition-colors ${isMoreOpen || currentView === 'sports' || currentView === 'travel' || currentView === 'predict' ? 'bg-[#e8e8e6] dark:bg-[#333] text-primary' : 'text-muted hover:text-primary hover:bg-[#f3f3ee] dark:hover:bg-[#2A2A2A]'}`}>
                  <MoreHorizontal className="w-5 h-5" />
               </div>
-              <span className={`text-[10px] font-medium ${isMoreOpen || currentView === 'sports' || currentView === 'travel' ? 'text-primary' : 'text-muted group-hover:text-primary'}`}>More</span>
+              <span className={`text-[10px] font-medium ${isMoreOpen || currentView === 'sports' || currentView === 'travel' || currentView === 'predict' ? 'text-primary' : 'text-muted group-hover:text-primary'}`}>More</span>
             </button>
             
             {isMoreOpen && (
                 <div className="absolute left-full ml-3 bottom-0 w-48 bg-surface border border-border rounded-xl shadow-xl z-50 py-1.5 animate-in fade-in zoom-in-95 duration-100 overflow-hidden">
                     <div className="flex flex-col">
+                        <button 
+                            onClick={() => {
+                                onNavigate('predict');
+                                setIsMoreOpen(false);
+                            }}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-surface-hover transition-colors ${currentView === 'predict' ? 'text-scira-accent bg-surface-hover' : 'text-primary'}`}
+                        >
+                            <Target className="w-4 h-4" />
+                            <span className="text-sm font-medium">Predict</span>
+                        </button>
+
                         <MenuItem icon={TrendingUp} label="Finance" onClick={() => setIsMoreOpen(false)} />
                         
                         <button 
