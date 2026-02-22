@@ -3,6 +3,142 @@ import { SearchResult } from "../types";
 // Access keys from environment variables
 const getTavilyKey = () => process.env.TAVILY_API_KEY || "";
 const getExaKey = () => process.env.EXA_API_KEY || "";
+const getFirecrawlKey = () => process.env.FIRECRAWL_API_KEY || "";
+const getSupadataKey = () => process.env.SUPADATA_API_KEY || "";
+const getValyuKey = () => process.env.VALYU_API_KEY || "";
+const getSupermemoryKey = () => process.env.SUPERMEMORY_API_KEY || "";
+
+/**
+ * STRATEGY: Firecrawl (Deep Crawl & Search)
+ */
+const searchFirecrawl = async (query: string, numResults: number = 5): Promise<SearchResult[]> => {
+    const apiKey = getFirecrawlKey();
+    if (!apiKey) return [];
+
+    try {
+        const response = await fetch("https://api.firecrawl.dev/v0/search", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                query: query,
+                limit: numResults,
+                pageOptions: {
+                    fetchPageContent: true // Get full content for RAG
+                }
+            }),
+        });
+
+        if (!response.ok) return [];
+        const data = await response.json();
+
+        return (data.data || []).map((item: any) => ({
+            title: item.metadata?.title || item.title || "Web Result",
+            link: item.url,
+            snippet: item.markdown?.substring(0, 300) || item.content?.substring(0, 300) || "",
+            displayLink: new URL(item.url).hostname,
+            type: 'web'
+        }));
+    } catch (e) {
+        console.warn("Firecrawl search failed", e);
+        return [];
+    }
+};
+
+/**
+ * STRATEGY: Supadata (YouTube Transcript Search)
+ */
+const searchSupadata = async (query: string): Promise<SearchResult[]> => {
+    const apiKey = getSupadataKey();
+    if (!apiKey) return [];
+
+    try {
+        // Supadata usually takes a video ID or channel, but for search we might need a different endpoint
+        // or use their YouTube search wrapper if available. 
+        // Assuming a standard search endpoint for this implementation:
+        const response = await fetch(`https://api.supadata.ai/v1/youtube/search?query=${encodeURIComponent(query)}`, {
+            headers: { "x-api-key": apiKey }
+        });
+
+        if (!response.ok) return [];
+        const data = await response.json();
+
+        return (data.videos || []).map((item: any) => ({
+            title: item.title,
+            link: `https://www.youtube.com/watch?v=${item.videoId}`,
+            snippet: item.description || "No description available",
+            displayLink: "youtube.com",
+            type: 'video',
+            image: item.thumbnailUrl
+        }));
+    } catch (e) {
+        console.warn("Supadata search failed", e);
+        return [];
+    }
+};
+
+/**
+ * STRATEGY: Valyu (Financial & General Research)
+ */
+const searchValyu = async (query: string): Promise<SearchResult[]> => {
+    const apiKey = getValyuKey();
+    if (!apiKey) return [];
+
+    try {
+        const response = await fetch(`https://api.valyu.ai/v1/search?q=${encodeURIComponent(query)}`, {
+            headers: { "Authorization": `Bearer ${apiKey}` }
+        });
+
+        if (!response.ok) return [];
+        const data = await response.json();
+
+        return (data.results || []).map((item: any) => ({
+            title: item.title,
+            link: item.url,
+            snippet: item.snippet || item.summary,
+            displayLink: new URL(item.url).hostname,
+            type: 'finance'
+        }));
+    } catch (e) {
+        console.warn("Valyu search failed", e);
+        return [];
+    }
+};
+
+/**
+ * STRATEGY: Supermemory (Personal Knowledge Base)
+ */
+const searchSupermemory = async (query: string): Promise<SearchResult[]> => {
+    const apiKey = getSupermemoryKey();
+    if (!apiKey) return [];
+
+    try {
+        const response = await fetch("https://api.supermemory.ai/v1/search", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({ query })
+        });
+
+        if (!response.ok) return [];
+        const data = await response.json();
+
+        return (data.results || []).map((item: any) => ({
+            title: item.title || "Memory",
+            link: item.url || "#",
+            snippet: item.content,
+            displayLink: "Supermemory",
+            type: 'memory'
+        }));
+    } catch (e) {
+        console.warn("Supermemory search failed", e);
+        return [];
+    }
+};
 
 /**
  * STRATEGY: Exa (Primary)
@@ -105,20 +241,14 @@ const searchTavily = async (query: string, numResults: number = 8): Promise<Sear
  * 3. Deduplicates by URL and Domain
  * 4. Aggregates into a dense result set (max 10)
  */
-export const performMultiSearch = async (query: string): Promise<SearchResult[]> => {
-    const exaKey = getExaKey();
-    const tavilyKey = getTavilyKey();
-    
+export const searchWithProviders = async (query: string, providers: ('exa' | 'tavily' | 'firecrawl' | 'valyu')[]): Promise<SearchResult[]> => {
     const promises: Promise<SearchResult[]>[] = [];
 
-    // Parallel Execution: 5 results from each provider
-    if (exaKey) {
-        promises.push(searchExa(query, 5)); 
-    }
-    if (tavilyKey) {
-        promises.push(searchTavily(query, 5));
-    }
-    
+    if (providers.includes('exa') && getExaKey()) promises.push(searchExa(query, 5));
+    if (providers.includes('tavily') && getTavilyKey()) promises.push(searchTavily(query, 5));
+    if (providers.includes('firecrawl') && getFirecrawlKey()) promises.push(searchFirecrawl(query, 3));
+    if (providers.includes('valyu') && getValyuKey()) promises.push(searchValyu(query));
+
     if (promises.length === 0) return [];
 
     const resultsArray = await Promise.all(promises);
@@ -126,14 +256,11 @@ export const performMultiSearch = async (query: string): Promise<SearchResult[]>
 
     // Deduplication & Diversity Filtering
     const seenUrls = new Set<string>();
-    const seenDomains = new Map<string, number>(); // Count results per domain
+    const seenDomains = new Map<string, number>(); 
     const uniqueResults: SearchResult[] = [];
 
     for (const res of flatResults) {
-        // 1. URL Dedup
         if (seenUrls.has(res.link)) continue;
-        
-        // 2. Domain Diversity (Cap max 2 results per domain)
         const domain = res.displayLink;
         const domainCount = seenDomains.get(domain) || 0;
         if (domainCount >= 2) continue;
@@ -143,9 +270,25 @@ export const performMultiSearch = async (query: string): Promise<SearchResult[]>
         uniqueResults.push(res);
     }
 
-    // Limit total context to 10 high quality results
-    return uniqueResults.slice(0, 10);
+    return uniqueResults.slice(0, 15);
 };
+
+export const performMultiSearch = async (query: string): Promise<SearchResult[]> => {
+    // Default Web Search: Exa + Tavily
+    return searchWithProviders(query, ['exa', 'tavily']);
+};
+
+// Export individual search functions for specific modes
+export const searchYoutube = async (query: string) => searchSupadata(query);
+export const searchAcademic = async (query: string) => {
+    // Combine Exa (academic filter) + Firecrawl (deep)
+    const exaResults = await searchExa(`${query} site:.edu OR site:arxiv.org`, 5);
+    const firecrawlResults = await searchFirecrawl(`${query} research paper`, 3);
+    return [...exaResults, ...firecrawlResults];
+};
+export const searchGithub = async (query: string) => searchFirecrawl(`site:github.com ${query}`, 5);
+export const searchMemory = async (query: string) => searchSupermemory(query);
+
 
 // Legacy single search export (mapped to multi-search engine)
 export const searchFast = async (query: string) => {

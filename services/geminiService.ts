@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { SearchResult, WidgetData, Message, CopilotPayload } from "../types";
-import { searchFast } from './googleSearchService';
+import { performMultiSearch } from '../lib/search';
 import { streamPollinations } from './pollinationsService';
 import { streamGroq } from './groqService';
 import { streamOpenRouter } from './openRouterService';
@@ -19,28 +19,27 @@ const generateWithRetry = async (params: any, retries = 3, delay = 2000): Promis
     }
 };
 
-// --- SMART QUERY GENERATOR (The "Thinking" Step) ---
+// --- SMART QUERY GENERATOR (Scira Strategy) ---
 export const generateSearchQueries = async (query: string): Promise<{ queries: string[], plan: string }> => {
     try {
-        // This prompt forces the "Official -> News -> Reviews" strategy
+        // Scira-style multi-query generation: 3-4 parallel vectors
         const response = await ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `You are an expert search strategist.
             User Query: "${query}"
             
-            Task: Break this down into 3 distinct Google search queries to get the absolute truth.
+            Task: Generate 4 distinct, high-quality search queries to cover this topic comprehensively in parallel.
             
-            Strategy:
-            1. **Query 1 (Official/Facts):** Find the official website, documentation, or primary source. Use terms like "official site", "specs", "whitepaper".
-            2. **Query 2 (Consensus/Reviews):** Find what real people say. Use terms like "reddit", "reviews", "problems", "vs".
-            3. **Query 3 (News/Updates):** Check for very recent changes or news in 2024/2025.
+            Vectors:
+            1. **Broad/Core**: The main entity or concept (e.g. "Nvidia stock analysis 2025").
+            2. **Specific/Data**: Look for numbers, specs, or reports (e.g. "Nvidia Q3 2025 revenue breakdown").
+            3. **Recent/News**: Look for the absolute latest updates (e.g. "Nvidia latest news last 7 days").
+            4. **Perspective/Analysis**: Look for expert take or market consensus (e.g. "Nvidia stock buy or sell analyst ratings").
             
-            Create a short "Research Plan" (max 6 words).
-            
-            Return strictly JSON:
+            Output JSON:
             {
-              "plan": "string",
-              "queries": ["query1", "query2", "query3"]
+              "plan": "Short strategic summary (max 6 words)",
+              "queries": ["q1", "q2", "q3", "q4"]
             }`,
             config: { responseMimeType: "application/json", temperature: 0.3 }
         });
@@ -49,20 +48,24 @@ export const generateSearchQueries = async (query: string): Promise<{ queries: s
         if (!text) throw new Error("No response from query generator");
         
         const data = JSON.parse(text);
+        // Ensure we have at least 3 queries, max 4
+        const queries = Array.isArray(data.queries) ? data.queries.slice(0, 4) : [query];
+        
         return {
-            queries: data.queries.slice(0, 3),
-            plan: data.plan || "Deep Research Strategy"
+            queries: queries,
+            plan: data.plan || "Parallel Search Strategy"
         };
     } catch (e) {
         console.error("Query generation failed", e);
-        // Fallback strategy if LLM fails
+        // Fallback strategy
         return { 
             queries: [
-                `${query} official specs`, 
-                `${query} reddit reviews problems`, 
-                `${query} latest news 2025`
+                `${query} overview`, 
+                `${query} latest news`, 
+                `${query} analysis`,
+                `${query} facts`
             ], 
-            plan: "Triangulating official data and reviews..." 
+            plan: "Multi-vector Search..." 
         };
     }
 };
@@ -153,47 +156,107 @@ export const streamResponse = async (
   const now = new Date();
   const contextResults = searchResults;
 
-  // Build Context Block with Source Prioritization hints
+  // Build Context Block with Explicit Source Names for Citations
   let ragContext = "";
   if (contextResults.length > 0) {
       ragContext = "VERIFIED SOURCES:\n" + 
-        contextResults.map((r, i) => `[${i+1}] Title: ${r.title}\nContent: ${r.snippet}\nSource: ${r.displayLink}`).join('\n\n');
+        contextResults.map((r, i) => `[${i+1}] Source Name: "${r.displayLink}"\nTitle: ${r.title}\nContent: ${r.snippet}`).join('\n\n');
   }
 
   if (deepFindings) ragContext = `DEEP DIVE FINDINGS:\n${deepFindings}\n\n${ragContext}`;
 
   const isResearch = contextResults.length > 0;
 
+  // --- Model Specific Routing ---
+  let effectiveModelId = modelName;
+  let systemInstruction = "";
+
+  // Impersio Sports: Routes to Kimi K2 with specialized prompts
+  if (modelName === 'impersio-sports') {
+      effectiveModelId = 'moonshotai/kimi-k2-instruct-0905';
+      
+      systemInstruction = `
+      System: You are Impersio Sports, an expert sports analyst.
+      Current Date: ${now.toLocaleString()}
+      
+      CRITICAL: Give the direct score/answer FIRST. No preamble.
+      
+      CONTEXT:
+      ${ragContext}
+      
+      FORMAT:
+      1. **Direct Answer**: Score or key fact immediately.
+      2. **Details**: Bullet points for stats/context.
+      3. **Citations**: Use format "Source Name [1]" (e.g. "ESPN [1]").
+      `;
+  } else if (modelName === 'impersio-travel') {
+      effectiveModelId = 'moonshotai/kimi-k2-instruct-0905';
+      
+      systemInstruction = `
+      System: You are Impersio Travel, a world-class travel planner and guide.
+      Current Date: ${now.toLocaleString()}
+      
+      MANDATE:
+      1. **Plan First**: If asked for an itinerary, provide a day-by-day breakdown immediately.
+      2. **Vibe**: Be inspiring, practical, and knowledgeable. Use emojis for locations (e.g. 🗼 Tokyo).
+      3. **Citations**: Use format "Source Name [1]" (e.g. "TripAdvisor [1]").
+      
+      CONTEXT:
+      ${ragContext}
+      
+      STRUCTURE:
+      - **Summary**: 2 sentences on why this destination is great.
+      - **Itinerary/Details**: Structured list with times and tips.
+      - **Budget**: Estimated costs if available.
+      `;
+  } else if (modelName === 'moonshotai/kimi-k2-instruct-0905') {
+      // Specialized Kimi K2 instruction for general queries
+      systemInstruction = `
+      System: You are Impersio (powered by Kimi K2), a comprehensive AI assistant.
+      Current Date: ${now.toLocaleString()}
+      
+      GOAL: Provide a medium-length answer (approx 200 words) that is dense with information and highly readable.
+
+      STRUCTURE:
+      - **Direct Answer**: Start with a single clear paragraph answering the question.
+      - **Key Details**: Use Markdown headers (###) or bullet points for the main evidence.
+      - **Context**: Briefly explain the "why" or "how".
+      
+      CITATION RULES:
+      - STRICTLY cite sources using the format: "Source Name [Index]". 
+      - Example: "According to Wikipedia [1], the result was..." or "Prices rose by 5% (Bloomberg [2])."
+      - Do NOT use standalone numbers like "[1]". Always attach the source name.
+      
+      CONTEXT:
+      ${ragContext}
+      `;
+  } else {
+      // Default System Prompt - PERPLEXITY STYLE
+      systemInstruction = `
+      System: You are Impersio, an expert AI search engine.
+      Current Date: ${now.toLocaleString()}
+      
+      GOAL: Provide a medium-length, high-quality answer (approx 200-250 words).
+
+      RULES:
+      1. **Structure**: 
+         - **Executive Summary**: Direct answer in the first paragraph.
+         - **Deep Dive**: Use Markdown headers (###) to separate key aspects.
+         - **Key Points**: Use bullet points for lists.
+      2. **Citations**: 
+         - STRICTLY cite sources using the format: "Source Name [Index]".
+         - Example: "Reuters [1] reports that..." or "...as seen in the data (CNBC [2])."
+         - NEVER use just "[1]".
+      3. **Tone**: Objective, professional, and explanatory.
+      4. **No Hallucinations**: Only use the provided verified sources.
+      
+      CONTEXT:
+      ${ragContext}
+      `;
+  }
+
   const fullPrompt = `
-  System: You are Impersio, a high-intelligence AI search engine.
-  Current Date: ${now.toLocaleString()}
-  
-  ${isResearch ? `
-  TASK: Answer the user's question comprehensively (approx 350-400 words).
-  
-  CONTEXT:
-  ${ragContext}
-  
-  STRICT RESPONSE RULES:
-  1. **Trust Hierarchy**: 
-     - First, state the *Official* facts/specs from primary sources.
-     - Second, contrast this with *User Reviews/Consensus* (Reddit, Forums).
-     - Third, mention any recent *News/Updates*.
-  
-  2. **Format & Length**:
-     - **Executive Summary**: 3-4 sentences answering the core question directly.
-     - **Detailed Sections**: Use Markdown headers (###) to organize the deep dive.
-     - **Length**: The body must be detailed. Do not be brief. Explain the "Why" and "How".
-  
-  3. **Citations**: 
-     - Every single claim must be cited inline using [1], [2].
-     - Example: "The device features a 50MP sensor [1], though users report low-light issues [3]."
-  
-  4. **Tone**: Objective, journalistic, and dense with information.
-  ` : `
-  TASK: Answer the user's conversational query politely.
-  - Keep it under 3 sentences unless asked for more.
-  `}
+  ${systemInstruction}
 
   User Query: ${prompt}
   
@@ -209,7 +272,7 @@ export const streamResponse = async (
       await streamFn();
   };
   
-  // GROQ MODELS
+  // GROQ MODELS (Includes Kimi K2 and Impersio Sports/Travel)
   const groqModels = [
       'openai/gpt-oss-120b',
       'moonshotai/kimi-k2-instruct-0905',
@@ -217,10 +280,10 @@ export const streamResponse = async (
       'qwen/qwen3-32b'
   ];
 
-  if (groqModels.includes(modelName)) {
+  if (groqModels.includes(effectiveModelId)) {
       try {
           let fullText = "";
-          await streamGroq([{ role: 'user', content: fullPrompt }], modelName, (c) => {
+          await streamGroq([{ role: 'user', content: fullPrompt }], effectiveModelId, (c) => {
               fullText += c;
               const cleanContent = fullText.replace(/<think>[\s\S]*?<\/think>/, '').trimStart();
               // Parse reasoning if needed
@@ -236,10 +299,10 @@ export const streamResponse = async (
   }
 
   // OPENROUTER MODELS
-  if (modelName === 'tngtech/deepseek-r1t2-chimera:free') {
+  if (effectiveModelId === 'tngtech/deepseek-r1t2-chimera:free') {
       try {
           let fullRaw = "";
-          await streamOpenRouter([{ role: 'user', content: fullPrompt }], modelName, (c) => {
+          await streamOpenRouter([{ role: 'user', content: fullPrompt }], effectiveModelId, (c) => {
               fullRaw += c;
               // Simple extraction of content after </think> if present, or just content
               const parts = fullRaw.split('</think>');
@@ -257,7 +320,7 @@ export const streamResponse = async (
   }
 
   // FALLBACK (Pollinations)
-  if (modelName !== 'gemini-3-flash-preview' && !modelName.includes('gemini')) {
+  if (effectiveModelId !== 'gemini-3-flash-preview' && !effectiveModelId.includes('gemini')) {
       try {
           let txt = "";
           await streamPollinations([{ role: 'user', content: fullPrompt }], 'openai', (c) => {

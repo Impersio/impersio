@@ -24,10 +24,12 @@ export interface SearchResult {
   displayLink: string;
   publishedDate?: string;
   image?: string;
+  type?: 'web' | 'video' | 'academic' | 'social' | 'code' | 'finance';
+  metadata?: any;
 }
 
 export interface WidgetData {
-  type: 'time' | 'weather' | 'stock' | 'slides';
+  type: 'time' | 'weather' | 'stock' | 'slides' | 'crypto' | 'place' | 'movie';
   data: any; 
 }
 
@@ -66,6 +68,26 @@ export interface CopilotEvent {
   items?: string[]; // For "Searching web" queries
 }
 
+export type SearchModeType = 
+  | 'web' 
+  | 'chat' 
+  | 'x' 
+  | 'stocks' 
+  | 'code' 
+  | 'academic' 
+  | 'extreme' 
+  | 'reddit' 
+  | 'github' 
+  | 'crypto' 
+  | 'prediction' 
+  | 'youtube' 
+  | 'spotify' 
+  | 'connectors' 
+  | 'memory' 
+  | 'voice' 
+  | 'xql'
+  | 'scraping';
+
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -82,6 +104,8 @@ export interface Message {
   isCopilotActive?: boolean; // True if we are currently in the copilot flow (before final answer)
   copilotStep?: CopilotPayload; // The interactive widget data
   copilotEvents?: CopilotEvent[]; // The log of steps (Understanding -> Searching...)
+  
+  mode?: SearchModeType;
 }
 
 export interface User {

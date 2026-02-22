@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Plus, Mic, ArrowRight, ChevronDown, ArrowUp } from 'lucide-react';
 import { ModelSelector } from '../ModelSelector';
-import { ModelOption } from '../../types';
+import { ModeSelector } from './ModeSelector';
+import { ModelOption, SearchModeType } from '../../types';
 import { SoundWaveIcon } from '../Icons';
 
 interface InputBarProps {
@@ -12,6 +13,8 @@ interface InputBarProps {
   selectedModel: ModelOption;
   setSelectedModel: (m: ModelOption) => void;
   models: ModelOption[];
+  selectedMode: SearchModeType;
+  setSelectedMode: (m: SearchModeType) => void;
 }
 
 export const InputBar: React.FC<InputBarProps> = ({ 
@@ -21,9 +24,12 @@ export const InputBar: React.FC<InputBarProps> = ({
   isInitial,
   selectedModel,
   setSelectedModel,
-  models
+  models,
+  selectedMode,
+  setSelectedMode
 }) => {
   const [isModelMenuOpen, setIsModelMenuOpen] = useState(false);
+  const [isModeMenuOpen, setIsModeMenuOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
@@ -52,9 +58,12 @@ export const InputBar: React.FC<InputBarProps> = ({
                 
                 <div className="flex items-center justify-between mt-auto">
                   <div className="flex items-center gap-2">
-                     <button className="flex items-center justify-center w-8 h-8 rounded-full text-gray-400 hover:text-primary border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                        <Plus className="w-4 h-4" />
-                     </button>
+                     <ModeSelector 
+                        selectedMode={selectedMode} 
+                        onSelect={setSelectedMode} 
+                        isOpen={isModeMenuOpen} 
+                        onToggle={() => setIsModeMenuOpen(!isModeMenuOpen)} 
+                     />
                   </div>
                   
                   <div className="flex items-center gap-2">
@@ -95,9 +104,14 @@ export const InputBar: React.FC<InputBarProps> = ({
              </>
           ) : (
             <div className="flex items-center gap-3 w-full h-[46px]">
-               <button className="p-2 text-muted hover:text-primary transition-colors rounded-full shrink-0 hover:bg-surface-hover">
-                  <Plus className="w-5 h-5 opacity-60" />
-               </button>
+               <div className="shrink-0">
+                   <ModeSelector 
+                        selectedMode={selectedMode} 
+                        onSelect={setSelectedMode} 
+                        isOpen={isModeMenuOpen} 
+                        onToggle={() => setIsModeMenuOpen(!isModeMenuOpen)} 
+                   />
+               </div>
                <input
                  value={query}
                  onChange={(e) => setQuery(e.target.value)}
@@ -115,7 +129,7 @@ export const InputBar: React.FC<InputBarProps> = ({
                         onToggle={() => setIsModelMenuOpen(!isModelMenuOpen)}
                         trigger={
                            <button className="text-xs font-medium text-muted hover:text-primary bg-surface-hover px-2 py-1 rounded-md transition-colors flex items-center gap-1">
-                              {selectedModel.name} <ChevronDown className="w-3 h-3" />
+                               {selectedModel.name} <ChevronDown className="w-3 h-3" />
                            </button>
                         }
                   />

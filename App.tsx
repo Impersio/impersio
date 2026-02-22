@@ -61,6 +61,7 @@ export default function App() {
   const [view, setView] = useState<'home' | 'discover' | 'library' | 'profile' | 'sports' | 'travel' | 'predict'>('home');
   const [user, setUser] = useState<User | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelOption>(MODELS[2]); // Default to Kimi K2
+  const [selectedMode, setSelectedMode] = useState<SearchModeType>('web');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile sidebar toggle
 
@@ -90,7 +91,7 @@ export default function App() {
       if (view === 'sports' || view === 'travel') {
           setView('home');
       }
-      handleSearch(q, selectedModel.id);
+      handleSearch(q, selectedModel.id, selectedMode);
       setQuery('');
   };
 
@@ -100,6 +101,7 @@ export default function App() {
       setActiveConversationId(null); 
       setView('home'); 
       setSelectedModel(MODELS[2]);
+      setSelectedMode('web');
       setChatTitle('New Chat');
   };
 
@@ -214,13 +216,15 @@ export default function App() {
                            </div>
                            
                            <InputBar 
-                              query={query} 
-                              setQuery={setQuery} 
-                              handleSearch={() => onSearch()} 
-                              isInitial={true}
-                              selectedModel={selectedModel}
-                              setSelectedModel={setSelectedModel}
-                              models={MODELS}
+                               query={query} 
+                               setQuery={setQuery} 
+                               handleSearch={() => onSearch()} 
+                               isInitial={true}
+                               selectedModel={selectedModel}
+                               setSelectedModel={setSelectedModel}
+                               models={MODELS}
+                               selectedMode={selectedMode}
+                               setSelectedMode={setSelectedMode}
                            />
                       </div>
                   </div>
@@ -251,6 +255,8 @@ export default function App() {
                             selectedModel={selectedModel}
                             setSelectedModel={setSelectedModel}
                             models={MODELS}
+                            selectedMode={selectedMode}
+                            setSelectedMode={setSelectedMode}
                         />
                     </div>
                   </>

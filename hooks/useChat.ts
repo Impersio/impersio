@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Message, SearchResult } from '../types';
+import { Message, SearchResult, SearchModeType } from '../types';
 import { performMultiSearch } from '../lib/search';
-import { streamResponse, generateSearchQueries } from '../ai/gemini';
+import { streamResponse, generateSearchQueries } from '../services/geminiService';
 import { createConversation, saveMessage } from '../services/chatStorageService';
+import { searchForMode, executeToolsForMode } from '../services/toolService';
 
 export const useChat = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -10,7 +11,7 @@ export const useChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
-  const handleSearch = async (query: string, modelId: string) => {
+  const handleSearch = async (query: string, modelId: string, forcedMode?: SearchModeType) => {
     if (!query.trim() || isLoading) return;
     
     setIsLoading(true);
@@ -22,7 +23,7 @@ export const useChat = () => {
        setActiveConversationId(currentId);
     }
 
-    const userMsg: Message = { role: 'user', content: query };
+    const userMsg: Message = { role: 'user', content: query, mode: forcedMode };
     const assistantMsg: Message = { 
         role: 'assistant', 
         content: '', 
@@ -35,41 +36,39 @@ export const useChat = () => {
     if (currentId) await saveMessage(currentId, 'user', query);
     
     try {
-      // 1. THINKING & PLANNING
+      // 1. SEARCH EXECUTION
+      // Default to 'web' if no mode is forced
+      const mode: SearchModeType = forcedMode || 'web';
+      let allResults: SearchResult[] = [];
+      let toolData: any = null;
+
+      // Update UI to show searching state
       setMessages(prev => {
         const newMsgs = [...prev];
         const last = newMsgs[newMsgs.length - 1];
         if (last) {
-            last.copilotEvents = [{ id: '1', status: 'loading', message: 'Analyzing request...' }];
-        }
-        return newMsgs;
-      });
-
-      // Skip query generation for speed
-      // const { queries, plan } = await generateSearchQueries(query);
-
-      // 2. SEARCH EXECUTION
-      setMessages(prev => {
-        const newMsgs = [...prev];
-        const last = newMsgs[newMsgs.length - 1];
-        if (last && last.copilotEvents) {
-             last.copilotEvents[0].status = 'completed';
-             last.copilotEvents[0].message = 'Fast Search'; 
-             
-             last.copilotEvents.push({ 
-                id: '2', 
+            last.copilotEvents = [{ 
+                id: '1', 
                 status: 'loading', 
-                message: `Searching sources...`, 
+                message: `Searching (${mode})...`, 
                 items: [query] 
-            });
+            }];
         }
         return newMsgs;
       });
 
-      // Execute Parallel Search Engine
-      const allResults = await performMultiSearch(query);
+      if (mode === 'chat') {
+        // Skip search
+      } else if (mode === 'crypto' || mode === 'stocks' || mode === 'weather') {
+        // Execute specific tool AND search for context
+        toolData = await executeToolsForMode(mode, query);
+        allResults = await searchForMode(mode, query);
+      } else {
+        // Standard search with mode-specific context
+        allResults = await searchForMode(mode, query);
+      }
 
-      // 3. RESULTS PROCESSING
+      // 2. RESULTS PROCESSING
       setMessages(prev => {
             const newMsgs = [...prev];
             const last = newMsgs[newMsgs.length - 1];
@@ -78,14 +77,14 @@ export const useChat = () => {
                 last.copilotEvents[lastIdx].status = 'completed';
                 
                 last.sources = allResults;
-                last.copilotEvents.push({ id: '3', status: 'completed', message: `Found ${allResults.length} relevant results` });
+                last.copilotEvents.push({ id: '2', status: 'completed', message: `Found ${allResults.length} results` });
             }
             return newMsgs;
        });
 
-      // 4. STREAM ANSWER
+      // 3. STREAM ANSWER
       await streamResponse(
-        query, 
+        query, // Use original query
         modelId, 
         [], 
         allResults, 
@@ -115,7 +114,7 @@ export const useChat = () => {
         (fullContent, widget, related) => {
            if (currentId) saveMessage(currentId, 'assistant', fullContent, { sources: allResults, relatedQuestions: related });
         },
-        undefined,
+        undefined, // deepFindings
         (rankedSources) => {
            setMessages(prev => {
               const newMsgs = [...prev];
