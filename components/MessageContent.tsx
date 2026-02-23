@@ -48,23 +48,22 @@ const CitationPill: React.FC<CitationPillProps> = ({ source, label, index }) => 
   try {
      const hostname = new URL(source.link).hostname.replace('www.', '');
      domain = hostname.split('.')[0];
+     if (domain.length > 15) domain = domain.substring(0, 12) + '...';
   } catch(e) {}
 
   return (
-    <span className="relative inline-block align-baseline mx-0.5">
+    <span className="relative inline-block align-middle mx-1">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`select-none inline-flex items-center justify-center gap-1 h-5 px-1.5 rounded-full cursor-pointer transition-all border transform active:scale-95
+        className={`select-none inline-flex items-center justify-center gap-1 px-2 py-0.5 rounded-full cursor-pointer transition-all border border-transparent
         ${isOpen 
-            ? 'bg-primary text-background border-primary' 
-            : 'bg-surface hover:bg-surface-hover border-border text-muted hover:text-primary hover:border-primary/30'
+            ? 'bg-primary text-background' 
+            : 'bg-[#2A2A2A] hover:bg-[#333] text-gray-400 hover:text-gray-200'
         }`}
         type="button"
         title={source.title}
       >
-        <span className="text-[10px] font-bold font-mono text-scira-accent">{index}</span>
-        {/* Only show domain text if there's enough space or for specific design preference, user asked for "openai +1" style */}
-        {/* <span className="text-[9px] font-medium max-w-[60px] truncate">{domain}</span> */}
+        <span className="text-[11px] font-medium truncate max-w-[100px]">{domain}</span>
       </button>
 
       {isOpen && (
@@ -225,9 +224,9 @@ export const MessageContent = memo(({ content, isStreaming, sources = [] }: Mess
                     </p>
                 );
             },
-            ul: ({node, ...props}: any) => <ul className="list-none space-y-2 mb-6" {...props} />,
-            ol: ({node, ...props}: any) => <ol className="list-decimal list-outside space-y-2 mb-6 ml-4" {...props} />,
-            li: ({node, children, ...props}: any) => (
+            ul: ({node, ordered, ...props}: any) => <ul className="list-none space-y-2 mb-6" {...props} />,
+            ol: ({node, ordered, ...props}: any) => <ol className="list-decimal list-outside space-y-2 mb-6 ml-4" {...props} />,
+            li: ({node, ordered, children, ...props}: any) => (
                 <li className="text-[16px] md:text-[17px] leading-8 pl-4 font-sans text-primary/90 relative" {...props}>
                    <span className="absolute left-0 top-[0.7em] w-1.5 h-1.5 bg-muted rounded-full opacity-60"></span>
                    {React.Children.map(children, child => {

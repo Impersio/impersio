@@ -33,10 +33,10 @@ export const InputBar: React.FC<InputBarProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
-      <div className={`w-full ${isInitial ? 'max-w-[700px]' : 'max-w-3xl'} mx-auto relative z-30 px-4`}>
+      <div className={`w-full ${isInitial ? 'max-w-[800px]' : 'max-w-3xl'} mx-auto relative z-30 px-4`}>
         <div className={`
           relative flex flex-col w-full bg-[#f4f4f5] dark:bg-[#202020] transition-all duration-300
-          ${isInitial ? 'rounded-xl p-4 shadow-sm border border-gray-300 dark:border-gray-700' : 'rounded-full p-2 px-4 shadow-elegant mb-6 border border-transparent'}
+          ${isInitial ? 'rounded-xl p-4 shadow-sm border border-black/10 dark:border-white/10' : 'rounded-full p-2 px-4 shadow-elegant mb-6 border border-transparent'}
         `}>
           {isInitial ? (
              <>
@@ -50,40 +50,43 @@ export const InputBar: React.FC<InputBarProps> = ({
                   }}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSearch(); } }}
                   placeholder="Ask a question..."
-                  className="w-full bg-transparent text-primary placeholder:text-gray-500 font-normal focus:outline-none resize-none overflow-hidden text-lg mb-4 leading-relaxed ml-1 font-sans min-h-[28px]"
-                  style={{ minHeight: '28px' }}
+                  className="w-full bg-transparent text-primary placeholder:text-gray-500 font-normal focus:outline-none resize-none overflow-hidden text-lg mb-4 leading-relaxed ml-1 font-sans min-h-[40px]"
+                  style={{ minHeight: '40px' }}
                   rows={1}
                   autoFocus
                 />
                 
                 <div className="flex items-center justify-between mt-auto">
                   <div className="flex items-center gap-2">
-                     {/* Web/Mode Toggle */}
-                     <ModeSelector 
-                        selectedMode={selectedMode} 
-                        onSelect={(m) => { setSelectedMode(m); setIsModeMenuOpen(false); }} 
-                        isOpen={isModeMenuOpen} 
-                        onToggle={() => setIsModeMenuOpen(!isModeMenuOpen)}
-                        trigger={
-                            <button 
-                                className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors ${selectedMode === 'web' ? 'bg-[#52525b] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-                            >
-                                <Globe className="w-4 h-4" />
-                            </button>
-                        }
-                     />
-
-                     {/* Extra Icons (Visual Only) */}
-                     <div className="hidden sm:flex items-center gap-1 mr-2">
-                        <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-200/50"><Keyboard className="w-4 h-4" /></button>
-                        <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-200/50"><Calculator className="w-4 h-4" /></button>
-                        <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-200/50"><Code className="w-4 h-4" /></button>
-                        <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-200/50"><MessageSquare className="w-4 h-4" /></button>
-                        <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-200/50"><Book className="w-4 h-4" /></button>
-                        <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-200/50"><Youtube className="w-4 h-4" /></button>
+                     {/* Web/Mode Toggle with Collapsible Icons */}
+                     <div className="flex items-center gap-1 bg-white dark:bg-[#303030] rounded-full p-1 border border-black/5 dark:border-white/5 transition-all duration-300 overflow-hidden" 
+                          style={{ width: isModeMenuOpen ? 'auto' : '40px' }}>
+                         <ModeSelector 
+                            selectedMode={selectedMode} 
+                            onSelect={(m) => { setSelectedMode(m); setIsModeMenuOpen(false); }} 
+                            isOpen={isModeMenuOpen} 
+                            onToggle={() => setIsModeMenuOpen(!isModeMenuOpen)}
+                            trigger={
+                                <button 
+                                    className={`flex items-center justify-center w-8 h-8 rounded-full transition-colors shrink-0 ${selectedMode === 'web' ? 'bg-[#52525b] text-white' : 'text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                                >
+                                    <Globe className="w-4 h-4" />
+                                </button>
+                            }
+                         />
+                         
+                         {/* Collapsible Icons */}
+                         <div className={`flex items-center gap-1 transition-all duration-300 ${isModeMenuOpen ? 'opacity-100 w-auto px-2' : 'opacity-0 w-0 overflow-hidden'}`}>
+                            <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-200/50"><Keyboard className="w-4 h-4" /></button>
+                            <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-200/50"><Calculator className="w-4 h-4" /></button>
+                            <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-200/50"><Code className="w-4 h-4" /></button>
+                            <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-200/50"><MessageSquare className="w-4 h-4" /></button>
+                            <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-200/50"><Book className="w-4 h-4" /></button>
+                            <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-200/50"><Youtube className="w-4 h-4" /></button>
+                         </div>
                      </div>
 
-                     {/* Model Selector Pill */}
+                     {/* Model Selector Pill (Simplified) */}
                      <ModelSelector
                         selectedModel={selectedModel}
                         models={models}
@@ -91,21 +94,12 @@ export const InputBar: React.FC<InputBarProps> = ({
                         isOpen={isModelMenuOpen}
                         onToggle={() => setIsModelMenuOpen(!isModelMenuOpen)}
                         trigger={
-                            <button className="flex items-center gap-2 px-3 py-1.5 bg-[#404040] text-white rounded-full text-xs font-medium hover:bg-black transition-colors">
-                                <Sparkles className="w-3 h-3" />
+                            <button className="flex items-center gap-2 px-3 py-1.5 bg-transparent hover:bg-black/5 dark:hover:bg-white/5 text-muted hover:text-primary rounded-full text-xs font-medium transition-colors border border-transparent hover:border-black/10">
                                 {selectedModel.name}
+                                <ChevronDown className="w-3 h-3 opacity-50" />
                             </button>
                         }
                     />
-
-                     {/* Extreme Mode Toggle */}
-                     <button 
-                        onClick={() => setSelectedMode(selectedMode === 'extreme' ? 'web' : 'extreme')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${selectedMode === 'extreme' ? 'bg-white border-gray-200 text-black shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
-                     >
-                         <Mountain className="w-3 h-3" />
-                         Extreme
-                     </button>
                   </div>
                   
                   {/* Submit Button */}

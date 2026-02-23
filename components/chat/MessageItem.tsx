@@ -5,6 +5,8 @@ import { Thinking } from '../Thinking';
 import { MessageContent } from '../MessageContent';
 import { ImpersioLogo } from '../Icons';
 
+import { SourceCard } from './SourceCard';
+
 interface MessageItemProps {
   msg: Message;
   isLast: boolean;
@@ -65,40 +67,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg, isLast, isLoading
 
         {/* Sources Section (Above Answer) */}
         {msg.sources && msg.sources.length > 0 && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm font-medium text-primary flex items-center gap-2">
-                 <Globe className="w-4 h-4" /> Sources
-              </span>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-              {msg.sources.slice(0, 4).map((source, idx) => (
-                <a 
-                  key={idx} href={source.link} target="_blank" rel="noreferrer"
-                  className="flex-shrink-0 w-44 flex flex-col p-3 rounded-lg bg-surface hover:bg-surface-hover border border-border transition-all h-[80px] justify-between group"
-                >
-                  <div className="text-xs font-medium text-primary line-clamp-2 leading-snug group-hover:text-scira-accent transition-colors">
-                    {source.title}
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-auto">
-                    <img 
-                      src={`https://www.google.com/s2/favicons?domain=${new URL(source.link).hostname}&sz=32`} 
-                      className="w-3 h-3 rounded-full opacity-60 grayscale group-hover:grayscale-0 transition-all" 
-                      alt=""
-                    />
-                    <div className="text-[10px] text-muted font-medium truncate flex-1">
-                      {source.displayLink}
-                    </div>
-                  </div>
-                </a>
-              ))}
-              {msg.sources.length > 4 && (
-                 <button className="flex-shrink-0 h-[80px] w-20 flex items-center justify-center rounded-lg bg-surface border border-border text-xs text-muted font-medium hover:bg-surface-hover transition-colors">
-                    View {msg.sources.length - 4} more
-                 </button>
-              )}
-            </div>
-          </div>
+          <SourceCard sources={msg.sources} />
         )}
 
         {/* Answer Section */}

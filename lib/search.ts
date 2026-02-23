@@ -257,7 +257,8 @@ const searchExa = async (query: string, numResults: number = 8): Promise<SearchR
                 link: item.url,
                 snippet: item.highlights?.[0] || item.text?.substring(0, 250) || "",
                 displayLink: hostname,
-                publishedDate: item.publishedDate
+                publishedDate: item.publishedDate,
+                image: item.image // Exa sometimes returns images
             };
         });
     } catch (e) {
@@ -284,6 +285,7 @@ const searchTavily = async (query: string, numResults: number = 8): Promise<Sear
                 query: query,
                 search_depth: "basic", // Basic for speed in multi-query, advanced for single deep
                 include_answer: true,
+                include_images: true, // Request images
                 max_results: numResults,
                 topic: "general"
             }),
@@ -291,8 +293,10 @@ const searchTavily = async (query: string, numResults: number = 8): Promise<Sear
 
         if (!response.ok) return [];
         const data = await response.json();
+        
+        const images = data.images || [];
 
-        return (data.results || []).map((item: any) => {
+        return (data.results || []).map((item: any, index: number) => {
             let hostname = 'Source';
             try { hostname = new URL(item.url).hostname.replace('www.', ''); } catch (e) {}
             return {
@@ -300,7 +304,8 @@ const searchTavily = async (query: string, numResults: number = 8): Promise<Sear
                 link: item.url,
                 snippet: item.content,
                 displayLink: hostname,
-                publishedDate: item.published_date
+                publishedDate: item.published_date,
+                image: images[index % images.length] // Distribute images round-robin
             };
         });
     } catch (e) {

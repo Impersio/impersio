@@ -45,14 +45,18 @@ export const useChat = () => {
       // Update UI to show searching state
       setMessages(prev => {
         const newMsgs = [...prev];
-        const last = newMsgs[newMsgs.length - 1];
+        const lastIndex = newMsgs.length - 1;
+        const last = newMsgs[lastIndex];
+        
         if (last) {
-            last.copilotEvents = [{ 
+            const newLast = { ...last };
+            newLast.copilotEvents = [{ 
                 id: '1', 
                 status: 'loading', 
-                message: `Searching (${mode})...`, 
-                items: [query] 
+                message: `Generating search plan...`, 
+                items: [] 
             }];
+            newMsgs[lastIndex] = newLast;
         }
         return newMsgs;
       });
@@ -65,19 +69,80 @@ export const useChat = () => {
         allResults = await searchForMode(mode, query);
       } else {
         // Standard search with mode-specific context
-        allResults = await searchForMode(mode, query);
+        
+        // 1. Generate Queries
+        const { queries, plan } = await generateSearchQueries(query);
+        
+        setMessages(prev => {
+            const newMsgs = [...prev];
+            const lastIndex = newMsgs.length - 1;
+            const last = newMsgs[lastIndex];
+            
+            if (last && last.copilotEvents) {
+                const newLast = { ...last };
+                const newEvents = [...last.copilotEvents];
+                
+                // Update first event
+                newEvents[0] = { ...newEvents[0], status: 'completed', message: plan };
+                
+                // Add second event if not exists
+                if (!newEvents.some(e => e.id === '2')) {
+                    newEvents.push({
+                        id: '2',
+                        status: 'loading',
+                        message: `Searching 5 vectors...`,
+                        items: queries
+                    });
+                }
+                
+                newLast.copilotEvents = newEvents;
+                newMsgs[lastIndex] = newLast;
+            }
+            return newMsgs;
+        });
+
+        // 2. Execute Parallel Search
+        const searchPromises = queries.map(q => searchForMode(mode, q));
+        const resultsArray = await Promise.all(searchPromises);
+        
+        // 3. Flatten and Deduplicate
+        const flatResults = resultsArray.flat();
+        const seenUrls = new Set<string>();
+        allResults = [];
+        
+        for (const res of flatResults) {
+            if (!seenUrls.has(res.link)) {
+                seenUrls.add(res.link);
+                allResults.push(res);
+            }
+        }
+        
+        // Limit to top 20 results
+        allResults = allResults.slice(0, 20);
       }
 
       // 2. RESULTS PROCESSING
       setMessages(prev => {
             const newMsgs = [...prev];
-            const last = newMsgs[newMsgs.length - 1];
+            const lastIndex = newMsgs.length - 1;
+            const last = newMsgs[lastIndex];
+            
             if (last && last.copilotEvents) {
-                const lastIdx = last.copilotEvents.length - 1;
-                last.copilotEvents[lastIdx].status = 'completed';
+                const newLast = { ...last };
+                const newEvents = [...last.copilotEvents];
+                const lastEventIdx = newEvents.length - 1;
                 
-                last.sources = allResults;
-                last.copilotEvents.push({ id: '2', status: 'completed', message: `Found ${allResults.length} results` });
+                // Update last event
+                newEvents[lastEventIdx] = { ...newEvents[lastEventIdx], status: 'completed' };
+                
+                // Add new event if not exists
+                if (!newEvents.some(e => e.id === '3')) {
+                    newEvents.push({ id: '3', status: 'completed', message: `Found ${allResults.length} sources` });
+                }
+                
+                newLast.copilotEvents = newEvents;
+                newLast.sources = allResults;
+                newMsgs[lastIndex] = newLast;
             }
             return newMsgs;
        });

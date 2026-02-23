@@ -28,18 +28,19 @@ export const generateSearchQueries = async (query: string): Promise<{ queries: s
             contents: `You are an expert search strategist.
             User Query: "${query}"
             
-            Task: Generate 4 distinct, high-quality search queries to cover this topic comprehensively in parallel.
+            Task: Generate 5 distinct, high-quality search queries to cover this topic comprehensively in parallel.
             
             Vectors:
             1. **Broad/Core**: The main entity or concept (e.g. "Nvidia stock analysis 2025").
             2. **Specific/Data**: Look for numbers, specs, or reports (e.g. "Nvidia Q3 2025 revenue breakdown").
             3. **Recent/News**: Look for the absolute latest updates (e.g. "Nvidia latest news last 7 days").
             4. **Perspective/Analysis**: Look for expert take or market consensus (e.g. "Nvidia stock buy or sell analyst ratings").
+            5. **Counter-point/Risk**: Look for potential downsides or alternative views.
             
             Output JSON:
             {
               "plan": "Short strategic summary (max 6 words)",
-              "queries": ["q1", "q2", "q3", "q4"]
+              "queries": ["q1", "q2", "q3", "q4", "q5"]
             }`,
             config: { responseMimeType: "application/json", temperature: 0.3 }
         });
@@ -63,7 +64,8 @@ export const generateSearchQueries = async (query: string): Promise<{ queries: s
                 `${query} overview`, 
                 `${query} latest news`, 
                 `${query} analysis`,
-                `${query} facts`
+                `${query} facts`,
+                `${query} counter-arguments`
             ], 
             plan: "Multi-vector Search..." 
         };
