@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   BrainCircuit,
   Zap,
+  Sparkles,
   Code as CodeIcon,
   CircleDashed,
   Menu,
@@ -34,6 +35,7 @@ import { PredictionPage } from './components/PredictionPage';
 // --- Available Models ---
 const MODELS: ModelOption[] = [
     // Stable
+    { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi k2', icon: Sparkles, description: "Moonshot AI's Kimi k2 model", category: 'Stable' },
     { id: 'grok-2', name: 'Grok 2.0', icon: Zap, description: "xAI's Grok 2.0 model", category: 'Stable' },
     { id: 'grok-2-vision', name: 'Grok 2.0 Vision', icon: Zap, description: "xAI's Grok 2.0 Vision model", category: 'Stable' },
     { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet', icon: BrainCircuit, description: "Anthropic's G.O.A.T. model", category: 'Stable' },

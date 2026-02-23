@@ -37,33 +37,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg, isLast, isLoading
     <div className="w-full max-w-3xl mx-auto pb-12 px-4 animate-fade-in font-sans">
       <div className="flex flex-col gap-6">
         
-        {/* Copilot / Search Progress Events */}
-        {msg.copilotEvents && msg.copilotEvents.length > 0 && !msg.content && !msg.reasoning && (
-           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 mb-2">
-                {msg.copilotEvents.map((event) => (
-                    <div key={event.id} className="flex flex-col gap-2 mb-3">
-                         <div className="flex items-center gap-2.5 text-sm text-muted">
-                            {event.status === 'loading' ? (
-                                <Loader2 className="w-4 h-4 animate-spin text-scira-accent" />
-                            ) : (
-                                <Check className="w-4 h-4 text-emerald-500" />
-                            )}
-                            <span className="font-medium text-primary/90">{event.message}</span>
-                         </div>
-                         {event.items && event.items.length > 0 && (
-                            <div className="pl-6 flex flex-col gap-1.5 mt-1">
-                                {event.items.map((item, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 text-xs text-muted">
-                                        <Search className="w-3 h-3 opacity-50" />
-                                        <span className="truncate">{item}</span>
-                                    </div>
-                                ))}
-                            </div>
-                         )}
-                    </div>
-                ))}
-           </div>
-        )}
+        {/* Copilot Events - HIDDEN as per request */}
+        {/* {msg.copilotEvents && ... } */}
 
         {/* Sources Section (Above Answer) */}
         {msg.sources && msg.sources.length > 0 && (
@@ -83,8 +58,9 @@ export const MessageItem: React.FC<MessageItemProps> = ({ msg, isLast, isLoading
           )}
 
           {isLoading && isLast && !msg.content && !msg.reasoning ? (
-             <div className="w-full space-y-4 opacity-10 py-2">
-                {/* Loader Placeholder if needed */}
+             <div className="w-full space-y-2 py-2">
+                <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2 animate-pulse"></div>
              </div>
           ) : (
             <div className="w-full">
