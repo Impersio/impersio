@@ -70,8 +70,17 @@ export const useChat = () => {
       } else {
         // Standard search with mode-specific context
         
-        // 1. Generate Queries
-        const { queries, plan } = await generateSearchQueries(query);
+        let queries: string[] = [query];
+        let plan = "Direct Search";
+
+        // OPTIMIZATION: For 'web' mode (default), skip LLM query generation to meet <500ms latency target.
+        // Only generate queries for 'deep' or explicit research modes if we had them.
+        if (mode !== 'web') {
+             // 1. Generate Queries (Slow path)
+             const gen = await generateSearchQueries(query);
+             queries = gen.queries;
+             plan = gen.plan;
+        }
         
         setMessages(prev => {
             const newMsgs = [...prev];
@@ -90,7 +99,7 @@ export const useChat = () => {
                     newEvents.push({
                         id: '2',
                         status: 'loading',
-                        message: `Searching 5 vectors...`,
+                        message: mode === 'web' ? `Searching sources...` : `Searching ${queries.length} vectors...`,
                         items: queries
                     });
                 }

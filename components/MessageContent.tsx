@@ -210,7 +210,7 @@ export const MessageContent = memo(({ content, isStreaming, sources = [] }: Mess
   };
 
   return (
-    <div className="markdown-body text-primary font-normal w-full min-w-0">
+    <div className="markdown-body text-primary font-sans font-normal w-full min-w-0">
       <ReactMarkdown 
         remarkPlugins={[remarkGfm]}
         components={{
