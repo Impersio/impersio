@@ -1,4 +1,4 @@
-import { Atom, Globe, Mic, Paperclip, Search, Cpu, ArrowUp, CheckCircle2 } from 'lucide-react';
+import { Atom, Globe, Mic, Paperclip, Search, Cpu, ArrowUp, SearchCheck } from 'lucide-react';
 import React, { useRef, useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export const ChatBoxInput: React.FC<InputBarProps> = ({
                         <Tabs defaultValue="Search">
                             <TabsList className="bg-gray-100 p-1 rounded-xl">
                                 <TabsTrigger value="Search" className='text-[#1c7483] rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm'>
-                                    <CheckCircle2 className="w-4 h-4 mr-2" /> Search
+                                    <SearchCheck className="w-4 h-4 mr-2" /> Search
                                 </TabsTrigger>
                                 <TabsTrigger value="Research" className='text-[#1c7483] rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm'>
                                     <Atom className="w-4 h-4 mr-2" /> Research

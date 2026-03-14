@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { ArrowUp, Globe, ChevronDown, Plus, Mic, Monitor, Search, BrainCircuit, Cpu, Paperclip, Atom } from 'lucide-react';
+import { ArrowUp, Globe, ChevronDown, Plus, Mic, Monitor, Search, SearchCheck, BrainCircuit, Cpu, Paperclip, Atom } from 'lucide-react';
 import { ModelSelector } from '../ModelSelector';
 import { ModeSelector } from './ModeSelector';
 import { ModelOption, SearchModeType } from '../../types';
@@ -51,7 +51,7 @@ export const InputBar: React.FC<InputBarProps> = ({
         `}>
           <Tabs defaultValue="Search" className="w-full">
             <TabsList className="mb-2">
-                <TabsTrigger value="Search" className='text-[#1c7483]'> <Search className="w-4 h-4 mr-2" /> Search</TabsTrigger>
+                <TabsTrigger value="Search" className='text-[#1c7483]'> <SearchCheck className="w-4 h-4 mr-2" /> Search</TabsTrigger>
                 <TabsTrigger value="Research" className='text-[#1c7483]'> <Atom className="w-4 h-4 mr-2" />Research</TabsTrigger>
             </TabsList>
             <TabsContent value="Search">

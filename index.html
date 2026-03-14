@@ -10,7 +10,7 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' stroke='%2321808D' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 2L2 7l10 5 10-5-10-5z'/%3E%3Cpath d='M2 17l10 5 10-5'/%3E%3Cpath d='M2 12l10 5 10-5'/%3E%3C/svg%3E">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
     
     <script>
       tailwind.config = {
@@ -18,8 +18,8 @@
         theme: {
           extend: {
             fontFamily: {
-              sans: ['"Space Grotesk"', 'sans-serif'],
-              serif: ['"Space Grotesk"', 'sans-serif'],
+              sans: ['"Inter"', 'sans-serif'],
+              serif: ['"Noto Serif"', 'serif'],
               mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
             },
             colors: {
@@ -75,16 +75,11 @@
       body {
         background-color: var(--bg-primary);
         color: var(--text-primary);
-        font-family: 'Space Grotesk', sans-serif !important;
+        font-family: 'Inter', sans-serif;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         margin: 0;
         padding: 0;
-      }
-
-      /* STRICTLY FORCE FONT ON EVERYTHING */
-      *, input, textarea, button, select {
-        font-family: 'Space Grotesk', sans-serif !important;
       }
 
       ::-webkit-scrollbar {

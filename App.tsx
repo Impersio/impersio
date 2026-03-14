@@ -176,7 +176,7 @@ export default function App() {
                           </button>
                       </div>
 
-                       <div className="w-full max-w-2xl flex flex-col items-center -mt-20 animate-fade-in relative z-10">
+                       <div className="w-full max-w-2xl flex flex-col items-center justify-center animate-fade-in relative z-10">
                            <div className="flex items-center gap-3 mb-8">
                                <ImpersioLogo className="w-10 h-10 text-primary" />
                                <h1 className="text-4xl font-normal tracking-tight text-primary font-sans">
