@@ -47,6 +47,8 @@ const MODELS: ModelOption[] = [
 ];
 
 export default function App() {
+  useTheme();
+  
   const { 
     messages, 
     setMessages, 

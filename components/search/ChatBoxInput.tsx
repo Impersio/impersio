@@ -22,7 +22,7 @@ export const ChatBoxInput: React.FC<InputBarProps> = ({
 
     return (
         <div className={`w-full ${isInitial ? 'max-w-[800px]' : 'max-w-3xl'} mx-auto relative z-30 px-4`}>
-            <div className={`p-4 w-full border rounded-2xl bg-white dark:bg-[#2F2F2F]`}>
+            <div className={`p-4 w-full border rounded-2xl bg-white dark:bg-white/5`}>
                 <textarea
                     ref={textareaRef}
                     value={query}

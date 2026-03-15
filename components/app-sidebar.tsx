@@ -48,10 +48,10 @@ export function AppSidebar({ onNewChat }: { onNewChat?: () => void }) {
                 <div className="px-4">
                     <button 
                         onClick={() => onNewChat ? onNewChat() : window.location.href = '/'}
-                        className="w-full flex items-center justify-between px-4 py-2.5 bg-[#f3f3f1] dark:bg-[#2A2A2A] hover:bg-[#e5e5e5] dark:hover:bg-[#333] rounded-full transition-colors text-sm font-medium text-primary border border-transparent dark:border-white/5"
+                        className="w-full flex items-center justify-between px-4 py-2.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full transition-colors text-sm font-medium text-primary border border-transparent dark:border-white/5"
                     >
                         <span>New Thread</span>
-                        <div className="flex items-center gap-1 px-2 py-1 bg-[#e5e5e5] dark:bg-[#3A3A3A] rounded-md text-[10px] font-medium text-muted">
+                        <div className="flex items-center gap-1 px-2 py-1 bg-black/5 dark:bg-white/10 rounded-md text-[10px] font-medium text-muted">
                             <Command className="w-3 h-3" />
                             <span>K</span>
                         </div>

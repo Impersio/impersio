@@ -92,7 +92,7 @@ export const Library: React.FC<LibraryProps> = ({ onSelectThread }) => {
   });
 
   return (
-    <div className="flex flex-col h-full bg-[#f9faf5] dark:bg-[#121211] font-sans">
+    <div className="flex flex-col h-full bg-background font-sans">
       {/* Top Header */}
       <div className="flex-none px-12 py-8 flex items-center justify-between border-b border-border/40">
         <div className="flex items-center gap-3">
@@ -106,7 +106,7 @@ export const Library: React.FC<LibraryProps> = ({ onSelectThread }) => {
              value={searchQuery}
              onChange={(e) => setSearchQuery(e.target.value)}
              placeholder="Search your threads"
-             className="w-full bg-white dark:bg-[#1C1C1C] border border-border rounded-full py-2.5 pl-12 pr-6 text-sm focus:outline-none focus:border-primary transition-colors"
+             className="w-full bg-white dark:bg-white/5 border border-border rounded-full py-2.5 pl-12 pr-6 text-sm focus:outline-none focus:border-primary transition-colors"
            />
         </div>
       </div>
@@ -197,7 +197,7 @@ export const Library: React.FC<LibraryProps> = ({ onSelectThread }) => {
           <div className="space-y-3">
              <button 
                onClick={() => setActiveCollectionId(null)}
-               className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${!activeCollectionId ? 'bg-white dark:bg-[#1C1C1C] border-border shadow-sm' : 'border-transparent hover:bg-sidebar/50'}`}
+               className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${!activeCollectionId ? 'bg-white dark:bg-white/5 border-border shadow-sm' : 'border-transparent hover:bg-sidebar/50'}`}
              >
                 <div className="flex items-center gap-3">
                    <span className="text-xl">🗃️</span>
@@ -212,7 +212,7 @@ export const Library: React.FC<LibraryProps> = ({ onSelectThread }) => {
                   <button 
                     key={col.id}
                     onClick={() => setActiveCollectionId(col.id)}
-                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all relative group ${activeCollectionId === col.id ? 'bg-white dark:bg-[#1C1C1C] border-border shadow-sm' : 'border-transparent hover:bg-sidebar/50'}`}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all relative group ${activeCollectionId === col.id ? 'bg-white dark:bg-white/5 border-border shadow-sm' : 'border-transparent hover:bg-sidebar/50'}`}
                   >
                      <div className="flex items-center gap-3">
                         <span className="text-xl">{col.icon}</span>
@@ -240,7 +240,7 @@ export const Library: React.FC<LibraryProps> = ({ onSelectThread }) => {
       {/* Create Collection Modal */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="w-full max-w-lg bg-white dark:bg-[#1C1C1C] rounded-2xl shadow-2xl p-8 relative animate-in zoom-in-95 duration-200 border border-border">
+           <div className="w-full max-w-lg bg-white dark:bg-card rounded-2xl shadow-2xl p-8 relative animate-in zoom-in-95 duration-200 border border-border">
               <button onClick={() => setIsCreateModalOpen(false)} className="absolute top-6 right-6 text-muted hover:text-primary"><X className="w-5 h-5" /></button>
               <h2 className="text-2xl font-bold mb-1">Create Collection</h2>
               <p className="text-muted text-sm mb-8">Organize and group your threads</p>
@@ -298,7 +298,7 @@ export const Library: React.FC<LibraryProps> = ({ onSelectThread }) => {
       {/* Move to Collection Modal */}
       {isMoveModalOpen.isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-           <div className="w-full max-w-lg bg-white dark:bg-[#1C1C1C] rounded-2xl shadow-2xl p-8 relative animate-in zoom-in-95 duration-200 border border-border">
+           <div className="w-full max-w-lg bg-white dark:bg-card rounded-2xl shadow-2xl p-8 relative animate-in zoom-in-95 duration-200 border border-border">
               <button onClick={() => setIsMoveModalOpen({ isOpen: false, threadId: null })} className="absolute top-6 right-6 text-muted hover:text-primary"><X className="w-5 h-5" /></button>
               <h2 className="text-2xl font-bold mb-8">Choose Collection</h2>
               

@@ -46,7 +46,7 @@ export const InputBar: React.FC<InputBarProps> = ({
   return (
       <div className={`w-full ${isInitial ? 'max-w-[800px]' : 'max-w-3xl'} mx-auto relative z-30 px-4`}>
         <div className={`
-          relative flex flex-col w-full bg-[#F4F4F4] dark:bg-[#2F2F2F] transition-all duration-300
+          relative flex flex-col w-full bg-[#F4F4F4] dark:bg-white/5 transition-all duration-300
           ${isInitial ? 'rounded-3xl p-4 shadow-sm border border-transparent focus-within:border-gray-300 dark:focus-within:border-gray-600' : 'rounded-full p-2 px-4 shadow-sm mb-6 border border-gray-200 dark:border-gray-700'}
         `}>
           <Tabs defaultValue="Search" className="w-full">
