@@ -32,7 +32,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
                 className="fixed inset-0 z-40" 
                 onClick={onToggle}
             />
-            <div className="absolute bottom-full right-0 mb-2 w-[280px] bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-[#333] rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 flex flex-col py-1.5 max-h-[400px] overflow-y-auto">
+            <div className="absolute bottom-full right-0 mb-2 w-[280px] bg-white dark:bg-[#1E1E1E] border border-gray-200 dark:border-black rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100 flex flex-col py-1.5 max-h-[400px] overflow-y-auto">
             
             <div className="flex flex-col">
                 {['Stable', 'Experimental'].map((category) => {

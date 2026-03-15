@@ -35,7 +35,7 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({ selectedMode, onSele
       ) : (
         <button 
             onClick={onToggle}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isOpen ? 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600' : 'bg-transparent border-transparent hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isOpen ? 'bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-black' : 'bg-transparent border-transparent hover:bg-gray-100 dark:hover:bg-gray-800'}`}
         >
             <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
                 {MODES.find(m => m.id === selectedMode)?.label || 'Web'}
@@ -47,7 +47,7 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({ selectedMode, onSele
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={onToggle} />
-          <div className="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-[#202020] border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+          <div className="absolute bottom-full left-0 mb-2 w-64 bg-white dark:bg-[#202020] border border-gray-200 dark:border-black rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
             <div className="p-1 space-y-0.5">
               {MODES.map((mode) => {
                 const Icon = mode.icon;

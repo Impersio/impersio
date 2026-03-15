@@ -22,7 +22,7 @@ export const ChatBoxInput: React.FC<InputBarProps> = ({
 
     return (
         <div className={`w-full ${isInitial ? 'max-w-[800px]' : 'max-w-3xl'} mx-auto relative z-30 px-4`}>
-            <div className={`p-4 w-full border rounded-2xl bg-white dark:bg-white/5`}>
+            <div className={`p-4 w-full border dark:border-black rounded-2xl bg-white dark:bg-white/5`}>
                 <textarea
                     ref={textareaRef}
                     value={query}
@@ -40,11 +40,11 @@ export const ChatBoxInput: React.FC<InputBarProps> = ({
                     {/* Left Side: Tabs */}
                     <div className='flex items-center gap-2'>
                         <Tabs defaultValue="Search">
-                            <TabsList className="bg-gray-100 p-1 rounded-xl">
-                                <TabsTrigger value="Search" className='text-[#1c7483] rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm'>
+                            <TabsList className="bg-gray-100 dark:bg-[#1c1c1c] p-1 rounded-xl">
+                                <TabsTrigger value="Search" className='text-[#1c7483] rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:shadow-sm dark:data-[state=active]:shadow-none'>
                                     <SearchCheck className="w-4 h-4 mr-2" /> Search
                                 </TabsTrigger>
-                                <TabsTrigger value="Research" className='text-[#1c7483] rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm'>
+                                <TabsTrigger value="Research" className='text-[#1c7483] rounded-lg data-[state=active]:bg-white dark:data-[state=active]:bg-black data-[state=active]:shadow-sm dark:data-[state=active]:shadow-none'>
                                     <Atom className="w-4 h-4 mr-2" /> Research
                                 </TabsTrigger>
                             </TabsList>

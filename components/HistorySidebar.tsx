@@ -63,10 +63,10 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
 
       {/* Sidebar Panel */}
       <div className={`
-        fixed top-0 left-0 h-full w-72 bg-sidebar border-r border-border z-50 transform transition-transform duration-300 ease-in-out flex flex-col
+        fixed top-0 left-0 h-full w-72 bg-sidebar border-r border-border dark:border-transparent z-50 transform transition-transform duration-300 ease-in-out flex flex-col
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border dark:border-transparent">
           <h2 className="font-semibold text-primary">Menu</h2>
           <button 
             onClick={onClose}
@@ -99,7 +99,7 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
                 <p className="text-sm text-muted mb-4">Set your name to personalize the experience.</p>
                 <button 
                   onClick={() => { onClose(); onSignIn(); }}
-                  className="px-4 py-2 bg-surface hover:bg-border border border-border rounded-lg text-sm font-medium transition-all"
+                  className="px-4 py-2 bg-surface hover:bg-border border border-border dark:border-transparent rounded-lg text-sm font-medium transition-all"
                 >
                   Set Profile
                 </button>
@@ -138,7 +138,7 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
           )}
         </div>
 
-        <div className="p-2 border-t border-border space-y-1">
+        <div className="p-2 border-t border-border dark:border-transparent space-y-1">
            <button 
              onClick={onToggleTheme}
              className="w-full flex items-center gap-3 p-3 text-sm text-muted hover:text-primary transition-colors rounded-lg hover:bg-surface"
