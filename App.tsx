@@ -56,6 +56,7 @@ export default function App() {
   } = useChat();
   
   const [query, setQuery] = useState('');
+  const [isMessagesLoading, setIsMessagesLoading] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProModalOpen, setIsProModalOpen] = useState(false);
   const [view, setView] = useState<'home' | 'discover' | 'library' | 'profile' | 'sports' | 'travel' | 'predict'>('home');
@@ -77,10 +78,16 @@ export default function App() {
         const conversationId = location.pathname.split('/search/')[1];
         if (conversationId) {
             setActiveConversationId(conversationId);
+            setIsMessagesLoading(true);
             getConversationMessages(conversationId).then(msgs => {
+                console.log("Loaded messages:", msgs);
                 if (msgs.length > 0) {
                     setMessages(msgs);
+                } else {
+                    setMessages([]);
+                    console.log("No messages found for conversationId:", conversationId);
                 }
+                setIsMessagesLoading(false);
             });
         }
     }
@@ -234,39 +241,44 @@ export default function App() {
            {/* View Content */}
            {view === 'home' && (
               <div className="flex-1 flex flex-col h-full relative overflow-hidden">
-                {!hasSearched ? (
+                {!hasSearched || isMessagesLoading ? (
                   <div className="flex-1 flex flex-col items-center justify-center p-4 min-h-[500px]">
+                      {isMessagesLoading ? (
+                          <div className="text-muted text-sm">Loading conversation...</div>
+                      ) : (
+                          <>
+                              {/* New Chat Button Mobile */}
+                              <div className="md:hidden absolute top-4 left-4 z-10">
+                                  <SidebarTrigger />
+                              </div>
+                              <div className="md:hidden absolute top-4 right-4 z-10">
+                                  <button onClick={handleNewChat} className="flex items-center gap-1.5 px-3 py-1.5 bg-surface hover:bg-surface-hover border border-border rounded-lg text-xs font-medium transition-all">
+                                      <Plus className="w-3.5 h-3.5" /> New
+                                  </button>
+                              </div>
 
-                      {/* New Chat Button Mobile */}
-                      <div className="md:hidden absolute top-4 left-4 z-10">
-                          <SidebarTrigger />
-                      </div>
-                      <div className="md:hidden absolute top-4 right-4 z-10">
-                          <button onClick={handleNewChat} className="flex items-center gap-1.5 px-3 py-1.5 bg-surface hover:bg-surface-hover border border-border rounded-lg text-xs font-medium transition-all">
-                              <Plus className="w-3.5 h-3.5" /> New
-                          </button>
-                      </div>
-
-                       <div className="w-full max-w-2xl flex flex-col items-center justify-center animate-fade-in relative z-10">
-                           <div className="flex items-center gap-3 mb-8">
-                               <ImpersioLogo className="w-10 h-10 text-foreground" />
-                               <h1 className="text-4xl font-normal tracking-tight text-foreground font-sans">
-                                  perplexity
-                               </h1>
-                           </div>
-                           
-                           <InputBar 
-                               query={query} 
-                               setQuery={setQuery} 
-                               handleSearch={() => onSearch()} 
-                               isInitial={true}
-                               selectedModel={selectedModel}
-                               setSelectedModel={setSelectedModel}
-                               models={MODELS}
-                               selectedMode={selectedMode}
-                               setSelectedMode={setSelectedMode}
-                           />
-                      </div>
+                              <div className="w-full max-w-2xl flex flex-col items-center justify-center animate-fade-in relative z-10">
+                                  <div className="flex items-center gap-3 mb-8">
+                                      <ImpersioLogo className="w-10 h-10 text-foreground" />
+                                      <h1 className="text-4xl font-normal tracking-tight text-foreground font-sans">
+                                         perplexity
+                                      </h1>
+                                  </div>
+                                  
+                                  <InputBar 
+                                      query={query} 
+                                      setQuery={setQuery} 
+                                      handleSearch={() => onSearch()} 
+                                      isInitial={true}
+                                      selectedModel={selectedModel}
+                                      setSelectedModel={setSelectedModel}
+                                      models={MODELS}
+                                      selectedMode={selectedMode}
+                                      setSelectedMode={setSelectedMode}
+                                  />
+                             </div>
+                          </>
+                      )}
                   </div>
                 ) : (
                   <>
