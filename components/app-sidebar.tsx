@@ -75,19 +75,13 @@ export function AppSidebar({ onNewChat }: { onNewChat?: () => void }) {
                             </SidebarMenuItem>
                         ))}
                         {HAS_CLERK_KEY ? (
-                            <SidebarMenuItem className="mt-2 px-4">
-                                <SignedOut>
+                            <SignedOut>
+                                <SidebarMenuItem className="mt-2 px-4">
                                     <SignInButton mode="modal">
                                         <Button className='w-full rounded-full text-white bg-[#1c7483] hover:bg-[#1c7483]/90 py-5 text-base'>Sign In</Button>
                                     </SignInButton>
-                                </SignedOut>
-                                <SignedIn>
-                                    <div className="flex items-center gap-3 p-2">
-                                        <UserButton afterSignOutUrl="/" />
-                                        <span className="text-sm font-medium">Profile</span>
-                                    </div>
-                                </SignedIn>
-                            </SidebarMenuItem>
+                                </SidebarMenuItem>
+                            </SignedOut>
                         ) : (
                             <SidebarMenuItem className="mt-2 px-4">
                                 <Button 
@@ -102,12 +96,22 @@ export function AppSidebar({ onNewChat }: { onNewChat?: () => void }) {
                 </SidebarGroup>
             </SidebarContent>
             <SidebarFooter>
-                <div className='p-3'>
-                    <h2 className='text-gray-500'> Try now </h2>
-                    <p className='text-gray-400'> Upgrade for image upload , smarter ai, and more Deepresearch</p>
-                    <Button className='rounded-full text-white bg-[#1c7483]'>Learn More</Button>
-                </div>
-                </SidebarFooter>
+                <SignedOut>
+                    <div className='p-3'>
+                        <h2 className='text-gray-500'> Try now </h2>
+                        <p className='text-gray-400'> Upgrade for image upload , smarter ai, and more Deepresearch</p>
+                        <Button className='rounded-full text-white bg-[#1c7483]'>Learn More</Button>
+                    </div>
+                </SignedOut>
+                <SignedIn>
+                    <div className="p-4 border-t border-border">
+                        <div className="flex items-center gap-3">
+                            <UserButton afterSignOutUrl="/" />
+                            <span className="text-sm font-medium">Profile</span>
+                        </div>
+                    </div>
+                </SignedIn>
+            </SidebarFooter>
         </Sidebar>
     )
 }
