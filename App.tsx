@@ -73,13 +73,13 @@ export default function App() {
   useEffect(() => { 
     if (location.pathname.startsWith('/search/')) {
         setView('home');
+        setHasSearched(true);
         const conversationId = location.pathname.split('/search/')[1];
         if (conversationId) {
             setActiveConversationId(conversationId);
             getConversationMessages(conversationId).then(msgs => {
                 if (msgs.length > 0) {
                     setMessages(msgs);
-                    setHasSearched(true);
                 }
             });
         }
