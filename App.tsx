@@ -11,6 +11,7 @@ import { getConversationMessages } from './services/chatStorageService';
 import { MetaIcon, GeminiIcon, ImpersioLogo } from './components/Icons';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { useChat } from './hooks/useChat';
+import { useUserSync } from './hooks/useUserSync';
 import { MessageItem } from './components/chat/MessageItem';
 import { ChatBoxInput } from './components/search/ChatBoxInput';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
@@ -36,6 +37,7 @@ const MODELS: ModelOption[] = [
 
 export default function App() {
   useTheme();
+  useUserSync();
   
   const { 
     messages, 

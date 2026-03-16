@@ -1,25 +1,15 @@
+import { createClient } from '@supabase/supabase-js';
 
-// Supabase has been removed from this project. 
-// This file acts as a placeholder to prevent import errors in legacy code.
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://gthmzwdwrkilhbmwgzso.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0aG16d2R3cmtpbGhibXdnenNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MzM5NjMsImV4cCI6MjA4OTIwOTk2M30.Sys-lKib6U8azaakkdCbW_PTYmOlsA11i5rk_1agvH8';
 
-export const supabase = {
-    auth: {
-      getSession: async () => ({ data: { session: null }, error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      signInWithPassword: async () => ({ data: null, error: new Error("Supabase removed") }),
-      signUp: async () => ({ data: null, error: new Error("Supabase removed") }),
-      signOut: async () => ({ error: null }),
-    },
-    from: (_table: string) => {
-      // Chainable dummy object
-      const dummyChain = {
-        select: () => dummyChain,
-        insert: () => dummyChain,
-        eq: () => dummyChain,
-        order: () => dummyChain,
-        single: () => Promise.resolve({ data: null, error: null }),
-        then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve)
-      };
-      return dummyChain;
-    }
-  };
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn(
+    'Supabase URL or Anon Key is missing. Please check your environment variables.'
+  );
+}
+
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key'
+);
