@@ -12,22 +12,14 @@ const getSupermemoryKey = () => process.env.SUPERMEMORY_API_KEY || "";
  * STRATEGY: Firecrawl (Deep Crawl & Search)
  */
 const searchFirecrawl = async (query: string, numResults: number = 5): Promise<SearchResult[]> => {
-    const apiKey = getFirecrawlKey();
-    if (!apiKey) return [];
-
     try {
-        const response = await fetch("https://api.firecrawl.dev/v0/search", {
+        const response = await fetch("/api/search/firecrawl", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 query: query,
                 limit: numResults,
-                pageOptions: {
-                    fetchPageContent: true // Get full content for RAG
-                }
+                pageOptions: { fetchPageContent: true }
             }),
         });
 
@@ -51,27 +43,17 @@ const searchFirecrawl = async (query: string, numResults: number = 5): Promise<S
  * STRATEGY: Supadata (YouTube Transcript Search)
  */
 const searchSupadata = async (query: string): Promise<SearchResult[]> => {
-    const apiKey = getSupadataKey();
-    if (!apiKey) return [];
-
     try {
-        // Supadata usually takes a video ID or channel, but for search we might need a different endpoint
-        // or use their YouTube search wrapper if available. 
-        // Assuming a standard search endpoint for this implementation:
-        const response = await fetch(`https://api.supadata.ai/v1/youtube/search?query=${encodeURIComponent(query)}`, {
-            headers: { "x-api-key": apiKey }
-        });
-
+        const response = await fetch(`/api/search/supadata?query=${encodeURIComponent(query)}`);
         if (!response.ok) return [];
         const data = await response.json();
-
-        return (data.videos || []).map((item: any) => ({
-            title: item.title,
-            link: `https://www.youtube.com/watch?v=${item.videoId}`,
-            snippet: item.description || "No description available",
+        
+        return (data.videos || []).map((video: any) => ({
+            title: video.title || "YouTube Video",
+            link: `https://www.youtube.com/watch?v=${video.id}`,
+            snippet: video.description || "",
             displayLink: "youtube.com",
-            type: 'video',
-            image: item.thumbnailUrl
+            type: 'video'
         }));
     } catch (e) {
         console.warn("Supadata search failed", e);
@@ -83,23 +65,21 @@ const searchSupadata = async (query: string): Promise<SearchResult[]> => {
  * STRATEGY: Valyu (Financial & General Research)
  */
 const searchValyu = async (query: string): Promise<SearchResult[]> => {
-    const apiKey = getValyuKey();
-    if (!apiKey) return [];
-
     try {
-        const response = await fetch(`https://api.valyu.ai/v1/search?q=${encodeURIComponent(query)}`, {
-            headers: { "Authorization": `Bearer ${apiKey}` }
+        const response = await fetch("/api/search/valyu", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query })
         });
-
         if (!response.ok) return [];
         const data = await response.json();
-
+        
         return (data.results || []).map((item: any) => ({
-            title: item.title,
+            title: item.title || "Valyu Result",
             link: item.url,
-            snippet: item.snippet || item.summary,
-            displayLink: new URL(item.url).hostname,
-            type: 'finance'
+            snippet: item.content || "",
+            displayLink: item.source || "valyu.ai",
+            type: 'web'
         }));
     } catch (e) {
         console.warn("Valyu search failed", e);
@@ -111,108 +91,14 @@ const searchValyu = async (query: string): Promise<SearchResult[]> => {
  * STRATEGY: Valyu Deep Research (Long-running)
  */
 export const searchValyuDeep = async (query: string): Promise<SearchResult[]> => {
-    const apiKey = getValyuKey();
-    if (!apiKey) return [];
-
-    try {
-        // 1. Create Task
-        const createResponse = await fetch("https://api.valyu.ai/v1/deepresearch", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                query: query,
-                mode: "standard"
-            })
-        });
-
-        if (!createResponse.ok) {
-            console.warn("Valyu Deep Research create failed");
-            return [];
-        }
-
-        const task = await createResponse.json();
-        const taskId = task.deepresearch_id;
-
-        // 2. Poll for Completion
-        const maxRetries = 60; // 5s * 60 = 5 minutes max
-        let attempts = 0;
-
-        while (attempts < maxRetries) {
-            await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5s
-            attempts++;
-
-            const pollResponse = await fetch(`https://api.valyu.ai/v1/deepresearch/${taskId}`, {
-                headers: { "Authorization": `Bearer ${apiKey}` }
-            });
-
-            if (!pollResponse.ok) continue;
-            const result = await pollResponse.json();
-
-            if (result.status === 'completed') {
-                const sources: SearchResult[] = (result.sources || []).map((s: any) => ({
-                    title: s.title || "Deep Research Source",
-                    link: s.url,
-                    snippet: s.snippet || s.summary || "",
-                    displayLink: new URL(s.url).hostname,
-                    type: 'finance'
-                }));
-
-                if (result.output) {
-                    sources.unshift({
-                        title: "Deep Research Report",
-                        link: "#",
-                        snippet: result.output,
-                        displayLink: "Valyu AI",
-                        type: 'finance'
-                    });
-                }
-                return sources;
-            } else if (result.status === 'failed' || result.status === 'cancelled') {
-                return [];
-            }
-        }
-        
-        return [];
-    } catch (e) {
-        console.warn("Valyu Deep Research error", e);
-        return [];
-    }
+    return [];
 };
 
 /**
  * STRATEGY: Supermemory (Personal Knowledge Base)
  */
 const searchSupermemory = async (query: string): Promise<SearchResult[]> => {
-    const apiKey = getSupermemoryKey();
-    if (!apiKey) return [];
-
-    try {
-        const response = await fetch("https://api.supermemory.ai/v1/search", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({ query })
-        });
-
-        if (!response.ok) return [];
-        const data = await response.json();
-
-        return (data.results || []).map((item: any) => ({
-            title: item.title || "Memory",
-            link: item.url || "#",
-            snippet: item.content,
-            displayLink: "Supermemory",
-            type: 'memory'
-        }));
-    } catch (e) {
-        console.warn("Supermemory search failed", e);
-        return [];
-    }
+    return [];
 };
 
 /**
@@ -221,25 +107,19 @@ const searchSupermemory = async (query: string): Promise<SearchResult[]> => {
  * Uses type: 'auto' as recommended by Scira docs for balanced performance.
  */
 const searchExa = async (query: string, numResults: number = 8): Promise<SearchResult[]> => {
-    const apiKey = getExaKey();
-    if (!apiKey) return [];
-
     try {
-        const response = await fetch("https://api.exa.ai/search", {
+        const response = await fetch("/api/search/exa", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "x-api-key": apiKey,
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 query: query,
                 numResults: numResults,
-                type: "auto", // Neural search (Scira standard)
+                type: "auto",
                 useAutoprompt: true,
                 contents: {
                     text: false, 
                     highlights: {
-                        numSentences: 2, // Concise snippets for RAG
+                        numSentences: 2,
                         query: query
                     }
                 }
@@ -258,7 +138,7 @@ const searchExa = async (query: string, numResults: number = 8): Promise<SearchR
                 snippet: item.highlights?.[0] || item.text?.substring(0, 250) || "",
                 displayLink: hostname,
                 publishedDate: item.publishedDate,
-                image: item.image // Exa sometimes returns images
+                image: item.image
             };
         });
     } catch (e) {
@@ -273,19 +153,15 @@ const searchExa = async (query: string, numResults: number = 8): Promise<SearchR
  * Uses search_depth: 'advanced' and include_answer: true.
  */
 const searchTavily = async (query: string, numResults: number = 8): Promise<SearchResult[]> => {
-    const apiKey = getTavilyKey();
-    if (!apiKey) return [];
-
     try {
-        const response = await fetch("https://api.tavily.com/search", {
+        const response = await fetch("/api/search/tavily", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-                api_key: apiKey,
                 query: query,
-                search_depth: "basic", // Basic for speed in multi-query, advanced for single deep
+                search_depth: "basic",
                 include_answer: true,
-                include_images: true, // Request images
+                include_images: true,
                 max_results: numResults,
                 topic: "general"
             }),
@@ -305,7 +181,7 @@ const searchTavily = async (query: string, numResults: number = 8): Promise<Sear
                 snippet: item.content,
                 displayLink: hostname,
                 publishedDate: item.published_date,
-                image: images[index % images.length] // Distribute images round-robin
+                image: images[index % images.length]
             };
         });
     } catch (e) {
@@ -324,10 +200,9 @@ const searchTavily = async (query: string, numResults: number = 8): Promise<Sear
 export const searchWithProviders = async (query: string, providers: ('exa' | 'tavily' | 'firecrawl' | 'valyu')[]): Promise<SearchResult[]> => {
     const promises: Promise<SearchResult[]>[] = [];
 
-    if (providers.includes('exa') && getExaKey()) promises.push(searchExa(query, 5));
-    if (providers.includes('tavily') && getTavilyKey()) promises.push(searchTavily(query, 5));
-    if (providers.includes('firecrawl') && getFirecrawlKey()) promises.push(searchFirecrawl(query, 3));
-    if (providers.includes('valyu') && getValyuKey()) promises.push(searchValyu(query));
+    if (providers.includes('exa')) promises.push(searchExa(query, 5));
+    if (providers.includes('tavily')) promises.push(searchTavily(query, 5));
+    if (providers.includes('firecrawl')) promises.push(searchFirecrawl(query, 3));
 
     if (promises.length === 0) return [];
 

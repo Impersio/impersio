@@ -5,15 +5,12 @@ export const streamPollinations = async (
   onChunk: (text: string) => void
 ) => {
   try {
-    const response = await fetch("https://text.pollinations.ai/openai", {
+    const response = await fetch("/api/chat/pollinations", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: 'openai', // Pollinations uses 'openai' to map to their best available model (GPT-4 class)
+        model: 'openai',
         messages: messages,
-        stream: true
       })
     });
 
@@ -22,37 +19,35 @@ export const streamPollinations = async (
     }
 
     const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    if (!reader) return;
+    if (!reader) throw new Error("No reader available");
 
-    let buffer = '';
+    const decoder = new TextDecoder();
+    let buffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      
-      buffer = lines.pop() || '';
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
       for (const line of lines) {
-        if (line.trim() === '') continue;
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') return;
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
           try {
             const json = JSON.parse(data);
-            const content = json.choices[0]?.delta?.content || '';
+            const content = json.choices[0]?.delta?.content || "";
             if (content) onChunk(content);
           } catch (e) {
-            // Ignore parsing errors for partial chunks
+            // Ignore parse errors for partial chunks
           }
         }
       }
     }
   } catch (error: any) {
-    console.error('Pollinations Streaming Error:', error);
+    console.warn('Pollinations Proxy Error:', error.message);
     throw error;
   }
 };

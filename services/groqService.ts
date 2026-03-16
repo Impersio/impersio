@@ -14,65 +14,51 @@ export const streamGroq = async (
   modelId: string,
   onChunk: (text: string) => void
 ) => {
-  const apiKey = getGroqApiKey();
-  
-  if (!apiKey) {
-    throw new Error("Groq API Key not configured. Please add GROQ_API_KEY to your env.");
-  }
-
-  const groq = new Groq({ 
-    apiKey, 
-    baseURL: process.env.GROQ_BASE_URL || undefined,
-    dangerouslyAllowBrowser: true 
-  });
-
-  // Configuration for specific models
-  // Fast response settings: Slightly higher temp for fluidity, ample tokens to prevent cut-off but not excessive.
-  let temperature = 0.6;
-  let max_tokens = 4096;
-  let reasoning_effort: "low" | "medium" | "high" | undefined = undefined;
-
-  if (modelId === 'openai/gpt-oss-120b') {
-      temperature = 0.8;
-      max_tokens = 4096;
-      reasoning_effort = "medium"; // Enable reasoning for GPT OSS
-  } else if (modelId === 'moonshotai/kimi-k2-instruct-0905') {
-      temperature = 0.6; // Balanced for structured, cited answers
-      max_tokens = 4096;
-  } else if (modelId === 'meta-llama/llama-4-scout-17b-16e-instruct') {
-      temperature = 0.7; 
-      max_tokens = 4096; 
-  } else if (modelId === 'qwen/qwen3-32b') {
-      temperature = 0.7;
-      max_tokens = 4096;
-  }
-
-  const params: any = {
-    model: modelId,
-    messages: messages,
-    stream: true,
-    temperature: temperature,
-    max_completion_tokens: max_tokens,
-    top_p: 1,
-    stop: null
-  };
-
-  // Only add reasoning_effort if the model supports it (like GPT OSS)
-  if (reasoning_effort) {
-      params.reasoning_effort = reasoning_effort;
-  }
-
   try {
-    const completion = await groq.chat.completions.create(params);
+    const response = await fetch("/api/chat/groq", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: modelId,
+        messages: messages,
+      }),
+    });
 
-    for await (const chunk of completion) {
-      const content = chunk.choices[0]?.delta?.content || "";
-      if (content) {
-        onChunk(content);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Groq Error");
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("No reader available");
+
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
+          try {
+            const json = JSON.parse(data);
+            const content = json.choices[0]?.delta?.content || "";
+            if (content) onChunk(content);
+          } catch (e) {
+            // Ignore parse errors for partial chunks
+          }
+        }
       }
     }
   } catch (error: any) {
-    console.warn('Groq Streaming Error:', error.message);
+    console.warn('Groq Proxy Error:', error.message);
     throw error;
   }
 };

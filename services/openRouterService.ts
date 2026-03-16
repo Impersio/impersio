@@ -13,81 +13,54 @@ export const streamOpenRouter = async (
   modelId: string,
   onChunk: (text: string) => void
 ) => {
-  const apiKey = getOpenRouterKey();
-
-  if (!apiKey) {
-      console.warn("OpenRouter API Key missing");
-      throw new Error("OpenRouter API Key is not configured.");
-  }
-
   try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const response = await fetch("/api/chat/openrouter", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        // Dynamic origin to satisfy CORS requirements while working in different environments
-        "HTTP-Referer": typeof window !== 'undefined' ? window.location.origin : "https://impersio.me",
-        "X-Title": "Impersio"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: modelId,
         messages: messages,
-        stream: true,
-        include_reasoning: true // Ensure DeepSeek models return reasoning
-      })
+        include_reasoning: true
+      }),
     });
 
     if (!response.ok) {
-        let errorText = "";
-        try {
-            errorText = await response.text();
-        } catch (e) {
-            errorText = response.statusText;
-        }
-        throw new Error(`OpenRouter API Error: ${response.status} - ${errorText}`);
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "OpenRouter Error");
     }
 
     const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-    if (!reader) return;
+    if (!reader) throw new Error("No reader available");
 
-    let buffer = '';
+    const decoder = new TextDecoder();
+    let buffer = "";
 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      
+
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      
-      // Process all complete lines
-      buffer = lines.pop() || '';
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
       for (const line of lines) {
-        if (line.trim() === '') continue;
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6);
-          if (data === '[DONE]') return;
+        if (line.startsWith("data: ")) {
+          const data = line.slice(6).trim();
+          if (data === "[DONE]") continue;
           try {
             const json = JSON.parse(data);
-            const content = json.choices[0]?.delta?.content || '';
-            // Some models return reasoning in a separate field (DeepSeek R1 beta)
-            // But we primarily rely on content stream containing <think> tags for standard R1.
-            // If there's explicit reasoning field, we append it with tags to normalize.
-            if (json.choices[0]?.delta?.reasoning) {
-               onChunk(`<think>${json.choices[0].delta.reasoning}</think>`);
-            } else if (content) {
-               onChunk(content);
-            }
+            const content = json.choices[0]?.delta?.content || "";
+            const reasoning = json.choices[0]?.delta?.reasoning || "";
+            if (reasoning) onChunk(`<think>${reasoning}</think>`);
+            else if (content) onChunk(content);
           } catch (e) {
-            // Ignore parsing errors for partial chunks
+            // Ignore parse errors for partial chunks
           }
         }
       }
     }
   } catch (error: any) {
-    console.error('OpenRouter Streaming Error:', error);
+    console.warn('OpenRouter Proxy Error:', error.message);
     throw error;
   }
 };
