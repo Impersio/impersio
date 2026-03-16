@@ -7,9 +7,9 @@ export const saveToLibrary = async (searchInput: string, userEmail: string) => {
     const { error } = await supabase
       .from('library')
       .insert({
-        "search input": searchInput,
-        "user email": userEmail,
-        "timestamp": new Date().toISOString(),
+        search_input: searchInput,
+        user_email: userEmail,
+        timestamp: new Date().toISOString(),
       });
 
     if (error) {
