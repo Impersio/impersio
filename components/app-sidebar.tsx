@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar"
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
 import { Compass, GalleryHorizontalEnd, Search, Command } from 'lucide-react'
 
 const MenuOptions = [
@@ -30,6 +31,8 @@ const MenuOptions = [
         path: '/library'
     }
 ]
+
+const HAS_CLERK_KEY = !!(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZnVubnktbW9ua2V5LTU5LmNsZXJrLmFjY291bnRzLmRldiQ');
 
 export function AppSidebar({ onNewChat }: { onNewChat?: () => void }) {
     const [path, setPath] = useState(typeof window !== 'undefined' ? window.location.pathname : '/');
@@ -71,9 +74,30 @@ export function AppSidebar({ onNewChat }: { onNewChat?: () => void }) {
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                         ))}
-                        <SidebarMenuItem className="mt-2 px-4">
-                            <Button className='w-full rounded-full text-white bg-[#1c7483] hover:bg-[#1c7483]/90 py-5 text-base'>Sign Up</Button>
-                        </SidebarMenuItem>
+                        {HAS_CLERK_KEY ? (
+                            <SidebarMenuItem className="mt-2 px-4">
+                                <SignedOut>
+                                    <SignInButton mode="modal">
+                                        <Button className='w-full rounded-full text-white bg-[#1c7483] hover:bg-[#1c7483]/90 py-5 text-base'>Sign In</Button>
+                                    </SignInButton>
+                                </SignedOut>
+                                <SignedIn>
+                                    <div className="flex items-center gap-3 p-2">
+                                        <UserButton afterSignOutUrl="/" />
+                                        <span className="text-sm font-medium">Profile</span>
+                                    </div>
+                                </SignedIn>
+                            </SidebarMenuItem>
+                        ) : (
+                            <SidebarMenuItem className="mt-2 px-4">
+                                <Button 
+                                    onClick={() => alert("Clerk is not configured. Please add VITE_CLERK_PUBLISHABLE_KEY to your environment variables.")}
+                                    className='w-full rounded-full text-white bg-[#1c7483] hover:bg-[#1c7483]/90 py-5 text-base'
+                                >
+                                    Sign In (Setup Required)
+                                </Button>
+                            </SidebarMenuItem>
+                        )}
                     </SidebarMenu>
                 </SidebarGroup>
             </SidebarContent>

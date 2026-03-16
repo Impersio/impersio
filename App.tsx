@@ -1,20 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  BrainCircuit,
-  Zap,
-  Code as CodeIcon,
-  CircleDashed,
-  Menu,
-  ChevronDown,
-  Share as ShareIcon,
-  Trash2,
-  Pencil,
-  Plus,
-  Trophy,
-  Plane,
-  Clock,
-  Calendar
-} from 'lucide-react';
+import { BrainCircuit, Zap, Code as CodeIcon, CircleDashed, Menu, ChevronDown, Share as ShareIcon, Trash2, Pencil, Plus, Trophy, Plane, Clock, Calendar } from 'lucide-react';
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react';
 import { authService } from './services/authService';
 import { User, ModelOption } from './types';
 import { Discover } from './components/Discover';
@@ -32,6 +18,8 @@ import { AppSidebar } from './components/app-sidebar';
 import { Sports } from './components/Sports';
 import { Travel } from './components/Travel';
 import { PredictionPage } from './components/PredictionPage';
+
+const HAS_CLERK_KEY = !!(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZnVubnktbW9ua2V5LTU5LmNsZXJrLmFjY291bnRzLmRldiQ');
 
 // --- Available Models ---
 const MODELS: ModelOption[] = [
@@ -129,6 +117,23 @@ export default function App() {
         <AppSidebar onNewChat={handleNewChat} />
 
         <main className="flex-1 flex flex-col min-w-0 relative h-full bg-background transition-all duration-300">
+             {HAS_CLERK_KEY && (
+               <header className="absolute top-4 right-4 z-50 flex items-center gap-4">
+                  <SignedOut>
+                    <div className="flex items-center gap-2">
+                      <SignInButton mode="modal">
+                        <button className="px-4 py-2 bg-primary text-background rounded-full text-sm font-medium hover:opacity-90 transition-opacity">Sign In</button>
+                      </SignInButton>
+                      <SignUpButton mode="modal">
+                        <button className="px-4 py-2 bg-surface border border-border rounded-full text-sm font-medium hover:bg-surface-hover transition-colors">Sign Up</button>
+                      </SignUpButton>
+                    </div>
+                  </SignedOut>
+                  <SignedIn>
+                    <UserButton afterSignOutUrl="/" />
+                  </SignedIn>
+               </header>
+             )}
              
              {/* Header - Only visible when searched or in specific views, NOT in sports/travel view */}
              {hasSearched && view === 'home' && (

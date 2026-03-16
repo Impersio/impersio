@@ -10,6 +10,8 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.3",
+    "@clerk/react": "^6.1.0",
     "@google/genai": "*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
