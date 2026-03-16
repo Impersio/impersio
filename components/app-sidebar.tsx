@@ -98,9 +98,9 @@ export function AppSidebar({ onNewChat }: { onNewChat?: () => void }) {
             <SidebarFooter>
                 <SignedOut>
                     <div className='p-3'>
-                        <h2 className='text-gray-500'> Try now </h2>
-                        <p className='text-gray-400'> Upgrade for image upload , smarter ai, and more Deepresearch</p>
-                        <Button className='rounded-full text-white bg-foreground hover:bg-foreground/90'>Learn More</Button>
+                        <SignInButton mode="modal">
+                            <Button className='w-full rounded-full text-white bg-foreground hover:bg-foreground/90'>Sign In</Button>
+                        </SignInButton>
                     </div>
                 </SignedOut>
                 <SignedIn>

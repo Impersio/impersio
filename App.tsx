@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { BrainCircuit, Zap, Code as CodeIcon, CircleDashed, Menu, ChevronDown, Share as ShareIcon, Trash2, Pencil, Plus, Trophy, Plane, Clock, Calendar } from 'lucide-react';
 import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from '@clerk/clerk-react';
 import { authService } from './services/authService';
@@ -14,12 +15,12 @@ import { SubscriptionModal } from './components/SubscriptionModal';
 import { useChat } from './hooks/useChat';
 import { useUserSync } from './hooks/useUserSync';
 import { MessageItem } from './components/chat/MessageItem';
-import { ChatBoxInput } from './components/search/ChatBoxInput';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './components/app-sidebar';
 import { Sports } from './components/Sports';
 import { Travel } from './components/Travel';
 import { PredictionPage } from './components/PredictionPage';
+import { ChatBoxInput } from './components/search/ChatBoxInput';
 
 const HAS_CLERK_KEY = !!(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZnVubnktbW9ua2V5LTU5LmNsZXJrLmFjY291bnRzLmRldiQ');
 
@@ -39,6 +40,8 @@ const MODELS: ModelOption[] = [
 export default function App() {
   useTheme();
   useUserSync();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user: clerkUser } = useUser();
   
   const { 
@@ -68,6 +71,12 @@ export default function App() {
   useEffect(() => { setUser(authService.getCurrentUser()); }, []);
   
   useEffect(() => { 
+    if (location.pathname.startsWith('/search/')) {
+        setView('home');
+    }
+  }, [location.pathname]);
+
+  useEffect(() => { 
     if (messagesEndRef.current) messagesEndRef.current.scrollIntoView({ behavior: 'smooth' }); 
   }, [messages.length, messages[messages.length-1]?.content]);
 
@@ -96,6 +105,12 @@ export default function App() {
       if (view === 'sports' || view === 'travel') {
           setView('home');
       }
+      
+      // Generate unique search ID and slug
+      const slug = q.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 20);
+      const uniqueId = Math.random().toString(36).substring(2, 15);
+      navigate(`/search/${slug}-${uniqueId}`);
+
       handleSearch(q, selectedModel.id, selectedMode);
       setQuery('');
   };
