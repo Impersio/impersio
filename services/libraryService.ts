@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { v4 as uuid } from 'uuid';
 
 export const saveToLibrary = async (searchInput: string, userEmail: string, type: 'search' | 'research' = 'search') => {
   if (!searchInput.trim() || !userEmail) return;
@@ -7,6 +8,7 @@ export const saveToLibrary = async (searchInput: string, userEmail: string, type
     const { error } = await supabase
       .from('library')
       .insert({
+        libid: uuid(),
         searchinput: searchInput,
         userEmail: userEmail,
         type: type,
