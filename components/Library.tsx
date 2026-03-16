@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
+import { useUser } from '@clerk/clerk-react';
+import { supabase } from '../services/supabaseClient';
 import { 
   Search, 
   Plus, 
@@ -28,7 +30,9 @@ interface LibraryProps {
 }
 
 export const Library: React.FC<LibraryProps> = ({ onSelectThread }) => {
+  const { user: clerkUser } = useUser();
   const [threads, setThreads] = useState<SavedConversation[]>([]);
+  const [supabaseThreads, setSupabaseThreads] = useState<any[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
@@ -42,13 +46,27 @@ export const Library: React.FC<LibraryProps> = ({ onSelectThread }) => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [clerkUser]);
 
   const loadData = async () => {
+    // Load local threads
     const t = await getUserConversations('guest');
     const c = await getCollections();
     setThreads(t);
     setCollections(c);
+
+    // Load Supabase library entries if user is logged in
+    if (clerkUser?.primaryEmailAddress?.emailAddress) {
+      const { data, error } = await supabase
+        .from('library')
+        .select('*')
+        .eq('user_email', clerkUser.primaryEmailAddress.emailAddress)
+        .order('timestamp', { ascending: false });
+
+      if (!error && data) {
+        setSupabaseThreads(data);
+      }
+    }
   };
 
   const handleDeleteThread = async (id: string, e: React.MouseEvent) => {
@@ -91,6 +109,10 @@ export const Library: React.FC<LibraryProps> = ({ onSelectThread }) => {
     return matchesSearch && matchesCollection;
   });
 
+  const filteredSupabaseThreads = supabaseThreads.filter(t => 
+    t.search_input.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="flex flex-col h-full bg-background font-sans">
       {/* Top Header */}
@@ -117,19 +139,35 @@ export const Library: React.FC<LibraryProps> = ({ onSelectThread }) => {
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <LayoutGrid className="w-5 h-5 text-primary opacity-60" />
-              <h2 className="text-xl font-bold text-primary">Threads</h2>
-            </div>
-            <div className="flex items-center gap-2">
-               <button className="p-2 text-muted hover:text-primary transition-colors rounded-lg bg-sidebar/50">
-                  <MoreHorizontal className="w-4 h-4" />
-               </button>
-               <button className="p-2 text-muted hover:text-primary transition-colors rounded-lg bg-sidebar/50">
-                  <Plus className="w-4 h-4" />
-               </button>
+              <h2 className="text-xl font-bold text-primary">Threads & History</h2>
             </div>
           </div>
 
           <div className="space-y-2">
+            {/* Supabase History */}
+            {filteredSupabaseThreads.map((item) => (
+              <div 
+                key={item.id}
+                onClick={() => onSelectThread(item.search_input)} // Note: this might need adjustment if onSelectThread expects an ID
+                className="group w-full text-left p-6 rounded-2xl hover:bg-white dark:hover:bg-[#1C1C1C] hover:shadow-sm border border-transparent hover:border-border transition-all cursor-pointer relative"
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <Search className="w-3.5 h-3.5 text-muted" />
+                  <h3 className="text-[17px] font-bold text-primary line-clamp-1">{item.search_input}</h3>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1.5 text-xs text-muted font-bold">
+                    <Clock className="w-3.5 h-3.5" />
+                    {formatTime(item.timestamp)}
+                  </div>
+                  <span className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded-full uppercase tracking-wider">
+                    Cloud Saved
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {/* Local Threads */}
             {filteredThreads.map((thread) => (
               <div 
                 key={thread.id}

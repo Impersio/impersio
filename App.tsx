@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BrainCircuit, Zap, Code as CodeIcon, CircleDashed, Menu, ChevronDown, Share as ShareIcon, Trash2, Pencil, Plus, Trophy, Plane, Clock, Calendar } from 'lucide-react';
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from '@clerk/clerk-react';
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton, useUser } from '@clerk/clerk-react';
 import { authService } from './services/authService';
-import { User, ModelOption } from './types';
+import { User, ModelOption, SearchModeType } from './types';
+import { saveToLibrary } from './services/libraryService';
 import { Discover } from './components/Discover';
 import { Library } from './components/Library';
 import { AuthModal } from './components/AuthModal';
@@ -38,6 +39,7 @@ const MODELS: ModelOption[] = [
 export default function App() {
   useTheme();
   useUserSync();
+  const { user: clerkUser } = useUser();
   
   const { 
     messages, 
@@ -81,6 +83,14 @@ export default function App() {
 
   const onSearch = (overrideQuery?: string) => {
       const q = overrideQuery || query;
+      if (!q.trim()) return;
+
+      // Save to library if user is logged in
+      const email = clerkUser?.primaryEmailAddress?.emailAddress;
+      if (email) {
+          saveToLibrary(q, email);
+      }
+
       // If searching from specialized views, switch to home view to show chat results
       if (view === 'sports' || view === 'travel') {
           setView('home');
