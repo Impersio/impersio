@@ -110,7 +110,7 @@ export const Library: React.FC<LibraryProps> = ({ onSelectThread }) => {
   });
 
   const filteredSupabaseThreads = supabaseThreads.filter(t => 
-    (t.search_input || "").toLowerCase().includes(searchQuery.toLowerCase())
+    (t.query || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -148,12 +148,12 @@ export const Library: React.FC<LibraryProps> = ({ onSelectThread }) => {
             {filteredSupabaseThreads.map((item) => (
               <div 
                 key={item.id}
-                onClick={() => onSelectThread(item.search_input)} // Note: this might need adjustment if onSelectThread expects an ID
+                onClick={() => onSelectThread(item.query)} // Note: this might need adjustment if onSelectThread expects an ID
                 className="group w-full text-left p-6 rounded-2xl hover:bg-white dark:hover:bg-[#1C1C1C] hover:shadow-sm border border-transparent hover:border-border transition-all cursor-pointer relative"
               >
                 <div className="flex items-center gap-2 mb-1">
                   <Search className="w-3.5 h-3.5 text-muted" />
-                  <h3 className="text-[17px] font-bold text-primary line-clamp-1">{item.search_input}</h3>
+                  <h3 className="text-[17px] font-bold text-primary line-clamp-1">{item.query}</h3>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1.5 text-xs text-muted font-bold">
