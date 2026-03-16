@@ -9,7 +9,7 @@ import { Discover } from './components/Discover';
 import { Library } from './components/Library';
 import { AuthModal } from './components/AuthModal';
 import { useTheme } from './hooks/useTheme';
-import { getConversationMessages } from './services/chatStorageService';
+import { getConversationMessages, createConversation } from './services/chatStorageService';
 import { MetaIcon, GeminiIcon, ImpersioLogo } from './components/Icons';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { useChat } from './hooks/useChat';
@@ -20,7 +20,7 @@ import { AppSidebar } from './components/app-sidebar';
 import { Sports } from './components/Sports';
 import { Travel } from './components/Travel';
 import { PredictionPage } from './components/PredictionPage';
-import { ChatBoxInput } from './components/search/ChatBoxInput';
+import { InputBar } from './components/search/InputBar';
 
 const HAS_CLERK_KEY = !!(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZnVubnktbW9ua2V5LTU5LmNsZXJrLmFjY291bnRzLmRldiQ');
 
@@ -73,6 +73,16 @@ export default function App() {
   useEffect(() => { 
     if (location.pathname.startsWith('/search/')) {
         setView('home');
+        const conversationId = location.pathname.split('/search/')[1];
+        if (conversationId) {
+            setActiveConversationId(conversationId);
+            getConversationMessages(conversationId).then(msgs => {
+                if (msgs.length > 0) {
+                    setMessages(msgs);
+                    setHasSearched(true);
+                }
+            });
+        }
     }
   }, [location.pathname]);
 
@@ -108,8 +118,15 @@ export default function App() {
       
       // Generate unique search ID and slug
       const slug = q.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 20);
-      const uniqueId = Math.random().toString(36).substring(2, 15);
-      navigate(`/search/${slug}-${uniqueId}`);
+      const uniqueId = activeConversationId || Math.random().toString(36).substring(2, 15);
+      const conversationId = `${slug}-${uniqueId}`;
+      
+      if (!activeConversationId) {
+          createConversation(q, q.substring(0, 150), conversationId).then(id => {
+              if (id) setActiveConversationId(id);
+          });
+      }
+      navigate(`/search/${conversationId}`);
 
       handleSearch(q, selectedModel.id, selectedMode);
       setQuery('');
@@ -123,6 +140,7 @@ export default function App() {
       setSelectedModel(MODELS[0]);
       setSelectedMode('web');
       setChatTitle('New Chat');
+      navigate('/');
   };
 
   useEffect(() => {
@@ -230,11 +248,16 @@ export default function App() {
                                </h1>
                            </div>
                            
-                           <ChatBoxInput 
+                           <InputBar 
                                query={query} 
                                setQuery={setQuery} 
                                handleSearch={() => onSearch()} 
                                isInitial={true}
+                               selectedModel={selectedModel}
+                               setSelectedModel={setSelectedModel}
+                               models={MODELS}
+                               selectedMode={selectedMode}
+                               setSelectedMode={setSelectedMode}
                            />
                       </div>
                   </div>
@@ -257,11 +280,16 @@ export default function App() {
                     </div>
                     
                     <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-background via-background/95 to-transparent pb-6 pt-10">
-                        <ChatBoxInput 
+                        <InputBar 
                             query={query} 
                             setQuery={setQuery} 
                             handleSearch={() => onSearch()} 
                             isInitial={false}
+                            selectedModel={selectedModel}
+                            setSelectedModel={setSelectedModel}
+                            models={MODELS}
+                            selectedMode={selectedMode}
+                            setSelectedMode={setSelectedMode}
                         />
                     </div>
                   </>
