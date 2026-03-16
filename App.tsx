@@ -65,7 +65,7 @@ export default function App() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Title state
-  const [chatTitle, setChatTitle] = useState('New Chat');
+  const [chatTitle, setChatTitle] = useState('My Chat');
   const [isTitleMenuOpen, setIsTitleMenuOpen] = useState(false);
 
   useEffect(() => { setUser(authService.getCurrentUser()); }, []);
