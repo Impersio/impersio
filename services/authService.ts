@@ -1,4 +1,5 @@
 
+import { v4 as uuidv4 } from 'uuid';
 import { User } from '../types';
 
 const USERS_KEY = 'impersio_users_db';
@@ -28,7 +29,7 @@ export const authService = {
 
         // Create user object matching the User interface
         const newUser: User = {
-            id: crypto.randomUUID(),
+            id: uuidv4(),
             email,
             full_name: fullName,
             is_pro: false
