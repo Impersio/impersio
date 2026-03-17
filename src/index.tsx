@@ -1,9 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ClerkProvider } from '@clerk/clerk-react';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
-import App from './App';
+import App from './App.tsx';
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_ZnVubnktbW9ua2V5LTU5LmNsZXJrLmFjY291bnRzLmRldiQ';
 
