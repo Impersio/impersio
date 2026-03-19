@@ -95,7 +95,7 @@ export default function App() {
       const email = clerkUser?.primaryEmailAddress?.emailAddress;
       if (email) {
           const type = (selectedMode === 'extreme' || selectedMode === 'academic') ? 'research' : 'search';
-          saveToLibrary(q, email, type);
+          saveToLibrary(q, email, type).catch(err => console.error('Failed to save to library:', err));
       }
 
       handleSearch(q, selectedModel.id, selectedMode);

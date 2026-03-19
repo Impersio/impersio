@@ -19,7 +19,9 @@ export const Library = ({ onSelectThread }: { onSelectThread: (id: string) => vo
         .eq('user_email', user.primaryEmailAddress.emailAddress)
         .order('created_at', { ascending: false });
 
-      if (!error && data) {
+      if (error) {
+        console.error('Error fetching library from Supabase:', error);
+      } else if (data) {
         setThreads(data);
       }
       setLoading(false);
