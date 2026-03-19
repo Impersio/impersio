@@ -7,8 +7,8 @@ export const saveToLibrary = async (query: string, email: string, type: string) 
     .from('library')
     .insert([
       { 
-        query, 
-        user_email: email, 
+        searchinput: query, 
+        userEmail: email, 
         type,
         created_at: new Date().toISOString()
       }

@@ -17,8 +17,7 @@ export const useUserSync = () => {
         .upsert({ 
           id: user.id, 
           email: email,
-          name: user.fullName || user.firstName || '',
-          updated_at: new Date().toISOString()
+          name: user.fullName || user.firstName || ''
         }, { onConflict: 'id' });
 
       if (error) {

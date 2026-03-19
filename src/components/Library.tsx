@@ -16,7 +16,7 @@ export const Library = ({ onSelectThread }: { onSelectThread: (id: string) => vo
       const { data, error } = await supabase
         .from('library')
         .select('*')
-        .eq('user_email', user.primaryEmailAddress.emailAddress)
+        .eq('userEmail', user.primaryEmailAddress.emailAddress)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -56,7 +56,7 @@ export const Library = ({ onSelectThread }: { onSelectThread: (id: string) => vo
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-foreground truncate mb-1">
-                    {thread.query}
+                    {thread.searchinput}
                   </h3>
                   <div className="flex items-center gap-2 text-xs text-muted">
                     <span className="capitalize">{thread.type || 'Search'}</span>
