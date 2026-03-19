@@ -21,6 +21,7 @@ export const Library = ({ onSelectThread }: { onSelectThread: (id: string) => vo
 
       if (error) {
         console.error('Error fetching library from Supabase:', error);
+        alert('Supabase Fetch Error: ' + error.message + ' | ' + error.details);
       } else if (data) {
         setThreads(data);
       }

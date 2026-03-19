@@ -17,11 +17,13 @@ export const useUserSync = () => {
         .upsert({ 
           id: user.id, 
           email: email,
-          name: user.fullName || user.firstName || ''
+          name: user.fullName || user.firstName || '',
+          credits: 100
         }, { onConflict: 'id' });
 
       if (error) {
         console.error('Error syncing user to Supabase:', error);
+        alert('Supabase User Sync Error: ' + error.message + ' | ' + error.details);
       }
     };
 

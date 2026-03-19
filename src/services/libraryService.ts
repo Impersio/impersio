@@ -16,6 +16,7 @@ export const saveToLibrary = async (query: string, email: string, type: string) 
 
   if (error) {
     console.error('Error saving to Supabase library:', error);
+    alert('Supabase Save Error: ' + error.message + ' | ' + error.details);
     throw error;
   }
   
