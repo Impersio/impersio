@@ -12,18 +12,28 @@ export const useUserSync = () => {
       const email = user.primaryEmailAddress?.emailAddress;
       if (!email) return;
 
-      const { error } = await supabase
+      // Check if user already exists
+      const { data: existingUser } = await supabase
         .from('users')
-        .upsert({ 
-          id: user.id, 
-          email: email,
-          name: user.fullName || user.firstName || '',
-          credits: 100
-        }, { onConflict: 'id' });
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
 
-      if (error) {
-        console.error('Error syncing user to Supabase:', error);
-        alert('Supabase User Sync Error: ' + error.message + ' | ' + error.details);
+      if (!existingUser) {
+        // Insert new user if they don't exist
+        const { error } = await supabase
+          .from('users')
+          .insert([{ 
+            id: user.id, 
+            email: email,
+            name: user.fullName || user.firstName || '',
+            credits: 100
+          }]);
+
+        if (error) {
+          console.error('Error syncing user to Supabase:', error);
+          alert('Supabase User Sync Error: ' + error.message + ' | ' + error.details);
+        }
       }
     };
 
