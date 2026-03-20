@@ -9,11 +9,9 @@ import { Discover } from '@/components/Discover.tsx';
 import { Library } from '@/components/Library.tsx';
 import { useTheme } from '@/hooks/useTheme';
 import { getConversationMessages } from '@/services/chatStorageService';
-import { MetaIcon } from '@/components/Icons';
 import { SubscriptionModal } from '@/components/SubscriptionModal';
 import { useChat } from '@/hooks/useChat';
 import { useUserSync } from '@/hooks/useUserSync';
-import { MessageItem } from '@/components/chat/MessageItem';
 import { Header } from '@/components/Header.tsx';
 import { DisplayResult } from '@/components/DisplayResult.tsx';
 import AppSidebar from '@/components/app-sidebar';
@@ -22,8 +20,9 @@ import ImpersioLogo from '@/components/ImpersioLogo';
 
 // --- Available Models ---
 const MODELS: ModelOption[] = [
-    { id: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet', icon: BrainCircuit, description: "Anthropic's G.O.A.T. model", category: 'Stable' },
-    { id: 'llama-3-3-70b', name: 'Llama 3.3 70B', icon: MetaIcon, description: "Meta's Llama model", category: 'Experimental' },
+    { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi K2', icon: BrainCircuit, description: "Moonshot AI's Kimi K2", category: 'Stable', provider: 'groq' },
+    { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', icon: BrainCircuit, description: "OpenAI GPT-OSS 120B", category: 'Experimental', provider: 'groq' },
+    { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nvidia Nemotron 3 Super', icon: BrainCircuit, description: "Nvidia Nemotron 3 Super 120B", category: 'Experimental', provider: 'openrouter' },
 ];
 
 export default function App() {
@@ -37,7 +36,6 @@ export default function App() {
     setMessages, 
     hasSearched, 
     setHasSearched, 
-    isLoading, 
     handleSearch, 
     setActiveConversationId,
   } = useChat();
@@ -169,8 +167,23 @@ export default function App() {
                                onSearch={() => onSearch()} 
                                selectedMode={selectedMode}
                                setSelectedMode={setSelectedMode}
+                               models={MODELS}
+                               selectedModel={selectedModel}
+                               setSelectedModel={setSelectedModel}
                            />
-                       </div>
+                           
+                           <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
+                               <button className="flex items-center gap-2 px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full text-sm font-medium transition-colors">
+                                   <Menu className="w-4 h-4" /> Summarize
+                               </button>
+                               <button className="flex items-center gap-2 px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full text-sm font-medium transition-colors">
+                                   <Calendar className="w-4 h-4" /> Plan
+                               </button>
+                               <button className="flex items-center gap-2 px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full text-sm font-medium transition-colors">
+                                   <BrainCircuit className="w-4 h-4" /> Analyze
+                               </button>
+                           </div>
+                      </div>
 
                       <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-6 text-sm text-muted font-medium">
                           <a href="#" className="hover:text-foreground transition-colors">Pro</a>
@@ -191,23 +204,37 @@ export default function App() {
                 ) : (
                   <>
                     <div className="flex-1 overflow-y-auto pb-40 pt-4 px-0 scroll-smooth scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-muted">
-                        <DisplayResult searchInputRecord={searchInputRecord} />
                         <div className="flex flex-col w-full mt-6"> 
-                        {messages.filter(m => m.role !== 'user').map((msg, idx) => ( 
-                            <MessageItem 
-                                key={idx} 
-                                msg={msg} 
-                                isLast={idx === messages.filter(m => m.role !== 'user').length - 1} 
-                                isLoading={isLoading} 
-                                onShare={() => {}} 
-                                onRewrite={onSearch} 
-                            /> 
+                        {messages.map((msg, idx) => ( 
+                            msg.role === 'assistant' && (
+                                <DisplayResult 
+                                    key={idx}
+                                    searchInputRecord={{ searchInput: messages[idx - 1]?.content || 'Search' }}
+                                    images={msg.images}
+                                    videos={msg.videos}
+                                    sources={msg.sources}
+                                    answer={msg.content}
+                                />
+                            )
                         ))}
                         <div ref={messagesEndRef} className="h-4" />
                         </div>
                     </div>
                     
-                    <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-background via-background/95 to-transparent pb-6 pt-10">
+                    <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-background via-background/95 to-transparent pb-0 pt-10 px-4">
+                        <div className="max-w-3xl mx-auto w-full">
+                           <ChatBoxInput 
+                               query={query} 
+                               setQuery={setQuery} 
+                               onSearch={() => onSearch()} 
+                               selectedMode={selectedMode}
+                               setSelectedMode={setSelectedMode}
+                               models={MODELS}
+                               selectedModel={selectedModel}
+                               setSelectedModel={setSelectedModel}
+                               isChatView={true}
+                           />
+                        </div>
                     </div>
                   </>
                 )}

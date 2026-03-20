@@ -1,8 +1,7 @@
-import React from 'react'
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SearchCheck, Atom, Cpu, Globe, Paperclip, Mic, AudioLines } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { SearchModeType } from '@/types'
+import { SearchModeType, ModelOption } from '@/types'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,12 +18,16 @@ interface ChatBoxInputProps {
     onSearch: () => void;
     selectedMode: SearchModeType;
     setSelectedMode: (mode: SearchModeType) => void;
+    models: ModelOption[];
+    selectedModel: ModelOption;
+    setSelectedModel: (model: ModelOption) => void;
+    isChatView?: boolean;
 }
 
-function ChatBoxInput({ query, setQuery, onSearch, selectedMode, setSelectedMode }: ChatBoxInputProps) {
+function ChatBoxInput({ query, setQuery, onSearch, selectedMode, setSelectedMode, models, selectedModel, setSelectedModel, isChatView }: ChatBoxInputProps) {
   return (
     <div className='flex items-center justify-center w-full'>
-      <div className='p-2 w-full max-w-2xl border rounded-2xl bg-background'>
+      <div className={`p-2 w-full max-w-2xl border bg-background ${isChatView ? 'rounded-t-2xl border-b-0' : 'rounded-2xl'}`}>
         <input
           type="text"
           placeholder='Ask Anything'
@@ -61,14 +64,20 @@ function ChatBoxInput({ query, setQuery, onSearch, selectedMode, setSelectedMode
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuGroup>
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuItem>Profile</DropdownMenuItem>
-                  <DropdownMenuItem>Billing</DropdownMenuItem>
-                </DropdownMenuGroup>
-                <DropdownMenuSeparator />
-                <DropdownMenuGroup>
-                  <DropdownMenuItem>Team</DropdownMenuItem>
-                  <DropdownMenuItem>Subscription</DropdownMenuItem>
+                  <DropdownMenuLabel>Select Model</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {models.map((model) => (
+                    <DropdownMenuItem 
+                      key={model.id} 
+                      onClick={() => setSelectedModel(model)}
+                      className={selectedModel.id === model.id ? 'bg-accent' : ''}
+                    >
+                      <div className="flex items-center gap-2">
+                        <model.icon className="h-4 w-4" />
+                        <span>{model.name}</span>
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
