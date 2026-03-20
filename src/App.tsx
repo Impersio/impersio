@@ -18,6 +18,7 @@ import { Header } from '@/components/Header.tsx';
 import { DisplayResult } from '@/components/DisplayResult.tsx';
 import AppSidebar from '@/components/app-sidebar';
 import ChatBoxInput from '@/components/ChatBoxInput';
+import ImpersioLogo from '@/components/ImpersioLogo';
 
 // --- Available Models ---
 const MODELS: ModelOption[] = [
@@ -156,6 +157,7 @@ export default function App() {
 
                        <div className="w-full max-w-3xl flex flex-col items-center justify-center animate-fade-in relative z-10">
                            <div className="flex items-center gap-3 mb-8">
+                               <ImpersioLogo className="h-10 w-10 text-foreground" />
                                <h1 className="text-4xl font-normal tracking-tight text-foreground font-sans">
                                   perplexity
                                </h1>
@@ -168,19 +170,7 @@ export default function App() {
                                selectedMode={selectedMode}
                                setSelectedMode={setSelectedMode}
                            />
-                           
-                           <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
-                               <button className="flex items-center gap-2 px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full text-sm font-medium transition-colors">
-                                   <Menu className="w-4 h-4" /> Summarize
-                               </button>
-                               <button className="flex items-center gap-2 px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full text-sm font-medium transition-colors">
-                                   <Calendar className="w-4 h-4" /> Plan
-                               </button>
-                               <button className="flex items-center gap-2 px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full text-sm font-medium transition-colors">
-                                   <BrainCircuit className="w-4 h-4" /> Analyze
-                               </button>
-                           </div>
-                      </div>
+                       </div>
 
                       <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-6 text-sm text-muted font-medium">
                           <a href="#" className="hover:text-foreground transition-colors">Pro</a>
