@@ -38,6 +38,7 @@ export default function App() {
     setHasSearched, 
     handleSearch, 
     setActiveConversationId,
+    isLoading,
   } = useChat();
   
   const [query, setQuery] = useState('');
@@ -200,6 +201,8 @@ export default function App() {
                                     videos={msg.videos}
                                     sources={msg.sources}
                                     answer={msg.content}
+                                    followUps={msg.followUps}
+                                    isFinished={!isLoading}
                                 />
                             )
                         ))}
