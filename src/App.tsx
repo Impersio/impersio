@@ -16,7 +16,7 @@ import { Header } from '@/components/Header.tsx';
 import { DisplayResult } from '@/components/DisplayResult.tsx';
 import AppSidebar from '@/components/app-sidebar';
 import ChatBoxInput from '@/components/ChatBoxInput';
-import ImpersioLogo from '@/components/ImpersioLogo';
+import ChatBoxLogo from '@/components/ChatBoxLogo';
 
 // --- Available Models ---
 const MODELS: ModelOption[] = [
@@ -155,7 +155,7 @@ export default function App() {
 
                         <div className="w-full max-w-3xl flex flex-col items-center justify-center animate-fade-in relative z-10">
                             <div className="mb-8">
-                                <ImpersioLogo variant="full" className="h-16 w-auto" />
+                                <ChatBoxLogo className="h-14 w-auto" />
                             </div>
                             
                             <ChatBoxInput 

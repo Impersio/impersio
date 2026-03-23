@@ -11,7 +11,7 @@ SidebarMenu,
 SidebarMenuItem,
 SidebarMenuButton,
 } from "@/components/ui/sidebar"
-import { Compass, GalleryHorizontalEnd, Search, User } from 'lucide-react'
+import { Search, User, Newspaper, History } from 'lucide-react'
 import ImpersioLogo from './ImpersioLogo'
 import { useUser, useClerk } from '@clerk/clerk-react'
 
@@ -23,12 +23,12 @@ path: '/'
 },
 {
 title: 'Discover',
-icon: Compass,
+icon: Newspaper,
 path: '/discover'
 },
 {
 title: 'Library',
-icon: GalleryHorizontalEnd,
+icon: History,
 path: '/library'
 }
 ]
@@ -41,18 +41,15 @@ const { openSignUp } = useClerk();
 
 const menuOptions = [...BaseMenuOptions];
 
-if (isSignedIn) {
-  menuOptions.push({
-    title: 'Profile',
-    icon: User,
-    path: '/profile'
-  });
-}
-
 return (
 <Sidebar className='bg-[#eff0eb] dark:bg-accent border-r-0'>
 <SidebarHeader className="py-6 bg-[#eff0eb] dark:bg-accent flex items-center justify-center">
-  <ImpersioLogo variant="full" className="h-10 w-auto" />
+  <img 
+    src="https://upload.wikimedia.org/wikipedia/commons/1/1d/Perplexity_AI_logo.svg"
+    alt="New Sidebar Logo"
+    className="h-20 w-auto"
+    referrerPolicy="no-referrer"
+  />
 </SidebarHeader>
 <SidebarContent className='bg-[#eff0eb] dark:bg-accent'>
 <SidebarGroup>
@@ -79,15 +76,26 @@ return (
 )}
             </SidebarGroup>
         </SidebarContent>
-        {!isSignedIn && (
-          <SidebarFooter className='bg-[#eff0eb] dark:bg-accent'>
-              <div className='p-3'>
-                  <h2 className='text-gray-500'>Try now</h2>
-                  <p className='text-gray-400'>Upgrade for image upload, smarter AI, and more Deep Research</p>
-                  <Button className='rounded-full text-white mt-2' style={{ backgroundColor: '#1c7483' }}>Learn More</Button>
-              </div>
-          </SidebarFooter>
-        )}
+        <SidebarFooter className='bg-[#eff0eb] dark:bg-accent'>
+  {isSignedIn ? (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild size="lg" className={`p-5 py-6 hover:bg-transparent hover:font-bold ${path === '/profile' ? 'font-bold' : ''}`}>
+          <Link to="/profile">
+            <User className='h-7 w-7' />
+            <span className='text-lg'>Profile</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  ) : (
+    <div className='p-3'>
+      <h2 className='text-gray-500'>Try now</h2>
+      <p className='text-gray-400'>Upgrade for image upload, smarter AI, and more Deep Research</p>
+      <Button className='rounded-full text-white mt-2' style={{ backgroundColor: '#1c7483' }}>Learn More</Button>
+    </div>
+  )}
+</SidebarFooter>
     </Sidebar>
 )
 }
