@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { BrainCircuit, Menu, ChevronDown, Plus, Calendar } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
 import { useUser, useClerk, UserButton } from '@clerk/clerk-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { authService } from '@/services/authService';
@@ -20,9 +20,9 @@ import ImpersioLogo from '@/components/ImpersioLogo';
 
 // --- Available Models ---
 const MODELS: ModelOption[] = [
-    { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi K2', icon: BrainCircuit, description: "Moonshot AI's Kimi K2", category: 'Stable', provider: 'groq' },
-    { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', icon: BrainCircuit, description: "OpenAI GPT-OSS 120B", category: 'Experimental', provider: 'groq' },
-    { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nvidia Nemotron 3 Super', icon: BrainCircuit, description: "Nvidia Nemotron 3 Super 120B", category: 'Experimental', provider: 'openrouter' },
+    { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi K2', description: "Moonshot AI's Kimi K2", category: 'Stable', provider: 'groq' },
+    { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', description: "OpenAI GPT-OSS 120B", category: 'Experimental', provider: 'groq' },
+    { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nvidia Nemotron 3 Super', description: "Nvidia Nemotron 3 Super 120B", category: 'Experimental', provider: 'openrouter' },
 ];
 
 export default function App() {
@@ -153,37 +153,23 @@ export default function App() {
                           </button>
                       </div>
 
-                       <div className="w-full max-w-3xl flex flex-col items-center justify-center animate-fade-in relative z-10">
-                           <div className="flex items-center gap-3 mb-8">
-                               <ImpersioLogo className="h-10 w-10 text-foreground" />
-                               <h1 className="text-4xl font-normal tracking-tight text-foreground font-sans">
-                                  perplexity
-                               </h1>
-                           </div>
-                           
-                           <ChatBoxInput 
-                               query={query} 
-                               setQuery={setQuery} 
-                               onSearch={() => onSearch()} 
-                               selectedMode={selectedMode}
-                               setSelectedMode={setSelectedMode}
-                               models={MODELS}
-                               selectedModel={selectedModel}
-                               setSelectedModel={setSelectedModel}
-                           />
-                           
-                           <div className="flex flex-wrap items-center justify-center gap-3 mt-4">
-                               <button className="flex items-center gap-2 px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full text-sm font-medium transition-colors">
-                                   <Menu className="w-4 h-4" /> Summarize
-                               </button>
-                               <button className="flex items-center gap-2 px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full text-sm font-medium transition-colors">
-                                   <Calendar className="w-4 h-4" /> Plan
-                               </button>
-                               <button className="flex items-center gap-2 px-4 py-2 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 rounded-full text-sm font-medium transition-colors">
-                                   <BrainCircuit className="w-4 h-4" /> Analyze
-                               </button>
-                           </div>
-                      </div>
+                        <div className="w-full max-w-3xl flex flex-col items-center justify-center animate-fade-in relative z-10">
+                            <div className="mb-8">
+                                <ImpersioLogo variant="text" className="h-24 w-auto" />
+                            </div>
+                            
+                            <ChatBoxInput 
+                                query={query} 
+                                setQuery={setQuery} 
+                                onSearch={() => onSearch()} 
+                                selectedMode={selectedMode}
+                                setSelectedMode={setSelectedMode}
+                                models={MODELS}
+                                selectedModel={selectedModel}
+                                setSelectedModel={setSelectedModel}
+                            />
+
+                       </div>
 
                       <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-6 text-sm text-muted font-medium">
                           <a href="#" className="hover:text-foreground transition-colors">Pro</a>

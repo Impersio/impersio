@@ -20,7 +20,7 @@ export const useChat = () => {
   const handleSearch = async (query: string, modelId: string, _mode: string) => {
     setHasSearched(true);
     const newMessages = [...messages, { role: 'user', content: query }];
-    setMessages(newMessages);
+    setMessages([...newMessages, { role: 'assistant', content: '', sources: [], images: [], videos: [] }]);
     setIsLoading(true);
 
     try {
@@ -326,10 +326,18 @@ Always use tools to gather verified information before responding, and cite ever
           stream: true,
         });
 
-        setMessages([...newMessages, { role: 'assistant', content: '', sources, images, videos }]);
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: '', sources, images, videos };
+          return updated;
+        });
         for await (const chunk of stream) {
           responseContent += chunk.choices[0]?.delta?.content || "";
-          setMessages([...newMessages, { role: 'assistant', content: responseContent, sources, images, videos }]);
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { ...updated[updated.length - 1], content: responseContent, sources, images, videos };
+            return updated;
+          });
         }
       } else if (isOpenRouter) {
         const stream = await openrouter.chat.send({
@@ -340,15 +348,27 @@ Always use tools to gather verified information before responding, and cite ever
           }
         });
 
-        setMessages([...newMessages, { role: 'assistant', content: '', sources, images, videos }]);
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: '', sources, images, videos };
+          return updated;
+        });
         for await (const chunk of stream) {
           responseContent += chunk?.choices?.[0]?.delta?.content || "";
-          setMessages([...newMessages, { role: 'assistant', content: responseContent, sources, images, videos }]);
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { ...updated[updated.length - 1], content: responseContent, sources, images, videos };
+            return updated;
+          });
         }
       } else {
         // Fallback for other models
         setTimeout(() => {
-          setMessages([...newMessages, { role: 'assistant', content: 'This is a mock response for ' + modelId, sources, images, videos }]);
+          setMessages(prev => {
+            const updated = [...prev];
+            updated[updated.length - 1] = { ...updated[updated.length - 1], content: 'This is a mock response for ' + modelId, sources, images, videos };
+            return updated;
+          });
           setIsLoading(false);
         }, 1000);
         return;
@@ -356,7 +376,11 @@ Always use tools to gather verified information before responding, and cite ever
     } catch (error: any) {
       console.error("Error fetching chat:", error);
       const errorMessage = error?.message || 'Sorry, an error occurred.';
-      setMessages([...newMessages, { role: 'assistant', content: `Error: ${errorMessage}` }]);
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { ...updated[updated.length - 1], content: `Error: ${errorMessage}` };
+        return updated;
+      });
     } finally {
       setIsLoading(false);
     }

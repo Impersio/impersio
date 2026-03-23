@@ -1,5 +1,5 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SearchCheck, Atom, Cpu, Globe, Paperclip, Mic, AudioLines } from 'lucide-react'
+import { SearchCheck, Atom, Cpu, Globe, Paperclip, Mic, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SearchModeType, ModelOption } from '@/types'
 import {
@@ -62,7 +62,7 @@ function ChatBoxInput({ query, setQuery, onSearch, selectedMode, setSelectedMode
                   <Cpu className='text-gray-500 h-5 w-5' />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent className="bg-[#f9faf5]">
                 <DropdownMenuGroup>
                   <DropdownMenuLabel>Select Model</DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -73,7 +73,6 @@ function ChatBoxInput({ query, setQuery, onSearch, selectedMode, setSelectedMode
                       className={selectedModel.id === model.id ? 'bg-accent' : ''}
                     >
                       <div className="flex items-center gap-2">
-                        <model.icon className="h-4 w-4" />
                         <span>{model.name}</span>
                       </div>
                     </DropdownMenuItem>
@@ -88,12 +87,16 @@ function ChatBoxInput({ query, setQuery, onSearch, selectedMode, setSelectedMode
             <Button variant='ghost' size='icon'>
               <Paperclip className='text-gray-500 h-5 w-5' />
             </Button>
-            <Button variant='ghost' size='icon'>
-              <Mic className='text-gray-500 h-5 w-5' />
-            </Button>
-            <Button size='icon' onClick={onSearch}>
-              <AudioLines className='text-white h-5 w-5' />
-            </Button>
+            
+            {query.trim() === '' ? (
+              <Button variant='ghost' size='icon'>
+                <Mic className='text-gray-500 h-5 w-5' />
+              </Button>
+            ) : (
+              <Button size='icon' onClick={onSearch}>
+                <Send className='text-white h-5 w-5' />
+              </Button>
+            )}
           </div>
         </div>
       </div>
