@@ -160,7 +160,17 @@ function ChatBoxInput({
                                             onClick={() => setSelectedModel(model)}
                                             className="flex items-center justify-between cursor-pointer"
                                         >
-                                            <span>{model.name}</span>
+                                            <div className="flex items-center gap-2">
+                                                {model.logoUrl && (
+                                                    <img 
+                                                        src={model.logoUrl} 
+                                                        alt={`${model.name} logo`} 
+                                                        className="w-4 h-4 object-contain"
+                                                        referrerPolicy="no-referrer"
+                                                    />
+                                                )}
+                                                <span>{model.name}</span>
+                                            </div>
                                             {selectedModel?.id === model.id && <Check className="h-4 w-4 text-[#1c7483]" />}
                                         </DropdownMenuItem>
                                     ))}

@@ -20,9 +20,9 @@ import ChatBoxLogo from '@/components/ChatBoxLogo';
 
 // --- Available Models ---
 const MODELS: ModelOption[] = [
-    { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi K2', description: "Moonshot AI's Kimi K2", category: 'Stable', provider: 'groq' },
-    { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', description: "OpenAI GPT-OSS 120B", category: 'Experimental', provider: 'groq' },
-    { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nvidia Nemotron 3 Super', description: "Nvidia Nemotron 3 Super 120B", category: 'Experimental', provider: 'openrouter' },
+    { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi K2', description: "Moonshot AI's Kimi K2", category: 'Stable', provider: 'groq', logoUrl: 'https://upload.wikimedia.org/wikipedia/en/8/87/Kimi-logo-2025.png' },
+    { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', description: "OpenAI GPT-OSS 120B", category: 'Experimental', provider: 'groq', logoUrl: 'https://images.icon-icons.com/3913/PNG/512/openai_logo_icon_248315.png' },
+    { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nvidia Nemotron 3 Super', description: "Nvidia Nemotron 3 Super 120B", category: 'Experimental', provider: 'openrouter', logoUrl: 'https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/nvidia-color.png' },
 ];
 
 export default function App() {

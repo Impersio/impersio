@@ -13,6 +13,7 @@ export interface ModelOption {
   name: string;
   description?: string;
   icon?: React.ElementType;
+  logoUrl?: string;
   provider?: 'gemini' | 'groq' | 'openrouter';
   isReasoning?: boolean;
   category?: 'Stable' | 'Experimental';
