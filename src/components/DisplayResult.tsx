@@ -2,7 +2,7 @@ import { LucideImage, LucideList, LucideSparkles, LucideVideo, ChevronRight, Sha
 import { useState } from 'react';
 import Markdown from 'react-markdown';
 
-export function DisplayResult({ searchInputRecord, userImage, images, videos, sources, answer, isFinished, followUps = [] }: any) {
+export function DisplayResult({ searchInputRecord, userImage, images, videos, sources, answer, isFinished, followUps = [], onShare }: any) {
     const [activeTab, setActiveTab] = useState('Answer');
 
     const tabs = [
@@ -125,7 +125,7 @@ export function DisplayResult({ searchInputRecord, userImage, images, videos, so
                             <div className="mt-8 pt-6 border-t border-gray-100">
                                 <div className="flex items-center justify-between mb-6 text-gray-400">
                                     <div className="flex items-center gap-4">
-                                        <Share className="w-4 h-4 cursor-pointer hover:text-black" />
+                                        <Share className="w-4 h-4 cursor-pointer hover:text-black" onClick={onShare} />
                                         <Download className="w-4 h-4 cursor-pointer hover:text-black" />
                                         <Copy className="w-4 h-4 cursor-pointer hover:text-black" />
                                         <RotateCw className="w-4 h-4 cursor-pointer hover:text-black" />
