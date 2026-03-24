@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import Groq from 'groq-sdk';
 import { OpenRouter } from '@openrouter/sdk';
+import { db, auth } from '../firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const groq = new Groq({ 
   apiKey: import.meta.env.VITE_GROQ_API_KEY || 'missing-key', 
@@ -17,13 +19,31 @@ export const useChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
+  const saveMessage = async (role: string, content: string, conversationId: string | null) => {
+    const userId = auth.currentUser?.uid;
+    if (!userId || !conversationId) return;
+    
+    const messagesRef = collection(db, 'users', userId, 'conversations', conversationId, 'messages');
+    await addDoc(messagesRef, {
+      role,
+      content,
+      timestamp: serverTimestamp()
+    });
+  };
+
   const handleSearch = async (query: string, modelId: string, _mode: string) => {
     setHasSearched(true);
     const newMessages = [...messages, { role: 'user', content: query }];
     setMessages([...newMessages, { role: 'assistant', content: '', sources: [], images: [], videos: [] }]);
     setIsLoading(true);
 
+    // Save user message
+    if (activeConversationId) {
+        await saveMessage('user', query, activeConversationId);
+    }
+
     try {
+      // ... (rest of search logic)
       let sources: any[] = [];
       let images: any[] = [];
       let videos: any[] = [];
@@ -339,6 +359,9 @@ Always use tools to gather verified information before responding, and cite ever
             return updated;
           });
         }
+        if (activeConversationId) {
+            await saveMessage('assistant', responseContent, activeConversationId);
+        }
       } else if (isOpenRouter) {
         const stream = await openrouter.chat.send({
           chatGenerationParams: {
@@ -360,6 +383,9 @@ Always use tools to gather verified information before responding, and cite ever
             updated[updated.length - 1] = { ...updated[updated.length - 1], content: responseContent, sources, images, videos };
             return updated;
           });
+        }
+        if (activeConversationId) {
+            await saveMessage('assistant', responseContent, activeConversationId);
         }
       } else {
         // Fallback for other models

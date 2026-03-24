@@ -12,7 +12,6 @@ SidebarMenuItem,
 SidebarMenuButton,
 } from "@/components/ui/sidebar"
 import { Search, User, Newspaper, History } from 'lucide-react'
-import ImpersioLogo from './ImpersioLogo'
 import { useUser, useClerk } from '@clerk/clerk-react'
 
 const BaseMenuOptions = [

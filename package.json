@@ -17,6 +17,7 @@
     "@tailwindcss/typography": "^0.5.19",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "firebase": "^12.11.0",
     "groq-sdk": "^1.1.1",
     "lucide-react": "^0.300.0",
     "moment": "^2.30.1",

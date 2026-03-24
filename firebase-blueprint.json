@@ -1,0 +1,50 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID" },
+        "email": { "type": "string", "description": "The user's email address" }
+      },
+      "required": ["uid", "email"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A chat message",
+      "type": "object",
+      "properties": {
+        "role": { "type": "string", "description": "The role of the sender (user or assistant)" },
+        "content": { "type": "string", "description": "The message content" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "When the message was sent" }
+      },
+      "required": ["role", "content", "timestamp"]
+    },
+    "Conversation": {
+      "title": "Conversation",
+      "description": "A chat conversation",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "The user who owns this conversation" },
+        "title": { "type": "string", "description": "The title of the conversation" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the conversation was created" }
+      },
+      "required": ["userId", "title", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/users/{userId}/conversations/{conversationId}": {
+      "schema": "Conversation",
+      "description": "User conversations"
+    },
+    "/users/{userId}/conversations/{conversationId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Messages within a conversation"
+    }
+  }
+}
