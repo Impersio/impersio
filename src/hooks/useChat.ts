@@ -42,7 +42,7 @@ export const useChat = () => {
     setIsLoading(true);
 
     const currentConversationId = conversationIdOverride || activeConversationId;
-
+    
     // Save user message
     if (currentConversationId) {
         await saveMessage('user', query, currentConversationId, image);
