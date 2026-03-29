@@ -107,7 +107,7 @@ function ChatBoxInput({
 
     return (
         <div className='flex items-center justify-center w-full'>
-            <div className={`p-2 w-full max-w-2xl border rounded-2xl bg-background transition-all duration-300 ${isListening ? 'border-[#1c7483] ring-1 ring-[#1c7483]' : ''}`}>
+            <div className={`p-2 w-full border rounded-2xl bg-background transition-all duration-300 ${isListening ? 'border-[#1c7483] ring-1 ring-[#1c7483]' : ''}`}>
                 {image && (
                     <div className="relative inline-block mb-2 ml-4 mt-2">
                         <img src={image} alt="Upload preview" className="h-20 w-20 object-cover rounded-lg border border-border" />
@@ -121,8 +121,8 @@ function ChatBoxInput({
                 )}
                 <input
                     type="text"
-                    placeholder={isListening ? 'Listening...' : 'Ask anything. Type @ for mentions.'}
-                    className='w-full p-4 outline-none bg-transparent'
+                    placeholder={isListening ? 'Listening...' : 'Ask anything.'}
+                    className='w-full p-4 text-lg outline-none bg-transparent'
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onPaste={handlePaste}
