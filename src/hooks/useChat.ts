@@ -35,16 +35,15 @@ export const useChat = () => {
     await addDoc(messagesRef, msgData);
   };
 
-  const handleSearch = async (query: string, modelId: string, searchModes: { web: boolean, academic: boolean, social: boolean, finance: boolean }, image?: string | null, conversationIdOverride?: string | null) => {
-    const currentConversationId = conversationIdOverride || activeConversationId;
+  const handleSearch = async (query: string, modelId: string, searchModes: { web: boolean, academic: boolean, social: boolean, finance: boolean }, image?: string | null) => {
     setHasSearched(true);
     const newMessages = [...messages, { role: 'user', content: query, image }];
     setMessages([...newMessages, { role: 'assistant', content: '', sources: [], images: [], videos: [] }]);
     setIsLoading(true);
 
     // Save user message
-    if (currentConversationId) {
-        await saveMessage('user', query, currentConversationId, image);
+    if (activeConversationId) {
+        await saveMessage('user', query, activeConversationId, image);
     }
 
     try {
@@ -83,41 +82,42 @@ export const useChat = () => {
       }
 
       // Apply mode-specific filters to the queries
-      let finalQueries: string[] = [];
+      let finalQueries: { query: string, mode: string }[] = [];
       
       if (searchModes.web || Object.values(searchModes).every(v => !v)) {
-        finalQueries.push(...searchQueries);
+        finalQueries.push(...searchQueries.map(q => ({ query: q, mode: 'web' })));
       }
       if (searchModes.academic) {
-        finalQueries.push(...searchQueries.map(q => `${q} site:edu OR site:scholar.google.com OR site:researchgate.net OR site:arxiv.org`));
+        finalQueries.push(...searchQueries.map(q => ({ query: `${q} site:edu OR site:scholar.google.com OR site:researchgate.net OR site:arxiv.org`, mode: 'academic' })));
       }
       if (searchModes.social) {
-        finalQueries.push(...searchQueries.map(q => `${q} site:reddit.com OR site:facebook.com OR site:twitter.com`));
+        finalQueries.push(...searchQueries.map(q => ({ query: `${q} site:reddit.com OR site:facebook.com OR site:twitter.com`, mode: 'social' })));
       }
       if (searchModes.finance) {
-        finalQueries.push(...searchQueries.map(q => `${q} site:sec.gov OR site:finance.yahoo.com OR site:bloomberg.com`));
+        finalQueries.push(...searchQueries.map(q => ({ query: `${q} site:sec.gov OR site:finance.yahoo.com OR site:bloomberg.com`, mode: 'finance' })));
       }
 
-      // Deduplicate and limit to 4 queries max to avoid rate limits
-      searchQueries = Array.from(new Set(finalQueries)).slice(0, 4);
+      // Deduplicate and limit to 16 queries max to allow more sources
+      const uniqueQueries = Array.from(new Map(finalQueries.map(item => [item.query, item])).values()).slice(0, 16);
+      const allModesOn = searchModes.web && searchModes.academic && searchModes.social && searchModes.finance;
 
       // Run Tavily and Serper searches in parallel for maximum speed
       const searchTasks: Promise<void>[] = [];
 
       // Perform Tavily Search
-      if (import.meta.env.VITE_TAVILY_API_KEY && searchQueries.length > 0) {
+      if (import.meta.env.VITE_TAVILY_API_KEY && uniqueQueries.length > 0) {
         searchTasks.push((async () => {
           try {
-            const searchPromises = searchQueries.map(async (sq) => {
+            const searchPromises = uniqueQueries.map(async (qObj) => {
               const tavilyResponse = await fetch('https://api.tavily.com/search', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   api_key: import.meta.env.VITE_TAVILY_API_KEY,
-                  query: sq,
+                  query: qObj.query,
                   include_images: true,
                   search_depth: 'basic', // Changed to basic for faster response
-                  max_results: 3, // Reduced to 3 for faster response and less context bloat
+                  max_results: allModesOn ? (qObj.mode === 'web' ? 12 : 2) : 3,
                 })
               });
               return tavilyResponse.json();
@@ -165,7 +165,7 @@ export const useChat = () => {
       }
 
       // Perform Serper.dev Video Search
-      if (import.meta.env.VITE_SERPER_API_KEY && searchQueries.length > 0) {
+      if (import.meta.env.VITE_SERPER_API_KEY && uniqueQueries.length > 0) {
         searchTasks.push((async () => {
           try {
             const serperResponse = await fetch('https://google.serper.dev/videos', {
@@ -174,7 +174,7 @@ export const useChat = () => {
                 'X-API-KEY': import.meta.env.VITE_SERPER_API_KEY,
                 'Content-Type': 'application/json'
               },
-              body: JSON.stringify({ q: searchQueries[0], num: 3 }) // Reduced to 3 for faster response
+              body: JSON.stringify({ q: uniqueQueries[0].query, num: 3 }) // Reduced to 3 for faster response
             });
             const serperData = await serperResponse.json();
             if (serperData.videos) {
@@ -458,8 +458,8 @@ Always use tools to gather verified information before responding, and cite ever
             return updated;
           });
         }
-        if (currentConversationId) {
-            await saveMessage('assistant', responseContent, currentConversationId);
+        if (activeConversationId) {
+            await saveMessage('assistant', responseContent, activeConversationId);
         }
       } else if (isOpenRouter) {
         const stream = await openrouter.chat.send({
@@ -483,8 +483,8 @@ Always use tools to gather verified information before responding, and cite ever
             return updated;
           });
         }
-        if (currentConversationId) {
-            await saveMessage('assistant', responseContent, currentConversationId);
+        if (activeConversationId) {
+            await saveMessage('assistant', responseContent, activeConversationId);
         }
       } else {
         // Fallback for other models
