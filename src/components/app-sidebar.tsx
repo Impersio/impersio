@@ -37,12 +37,12 @@ function AppSidebar() {
   const { setOpenMobile } = useSidebar();
 
   return (
-    <Sidebar className='bg-[#f4f4f4] border-r-0 w-24 flex flex-col items-center py-4'>
+    <Sidebar className='bg-[#f4f4f4] border-r-0 w-20 flex flex-col items-center py-4'>
       <SidebarHeader className="bg-transparent flex items-center justify-center mb-4">
         <img 
           src="https://assets.streamlinehq.com/image/private/w_300,h_300,ar_1/f_auto/v1/icons/logos/perplexity-kcjtmnt09fjb1qgfxcdbd.png/perplexity-e6a4e1t06hd6dhczot580o.png?_a=DATAiZAAZAA0"
           alt="Perplexity Logo"
-          className="h-10 w-10"
+          className="h-10 w-10 object-contain"
           referrerPolicy="no-referrer"
         />
       </SidebarHeader>

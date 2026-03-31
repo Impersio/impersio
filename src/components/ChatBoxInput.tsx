@@ -1,7 +1,7 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { SearchCheck, Atom, Cpu, Globe, Paperclip, Mic, AudioLines, Send, X, MicOff, GraduationCap, GitBranch, Receipt, Check } from 'lucide-react'
+import { SearchCheck, Atom, Cpu, Globe, Paperclip, Mic, AudioLines, Send, X, MicOff, GraduationCap, GitBranch, Receipt, Check, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,6 +40,32 @@ function ChatBoxInput({
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isListening, setIsListening] = useState(false);
     const recognitionRef = useRef<any>(null);
+    const [suggestions, setSuggestions] = useState<string[]>([]);
+
+    const fetchSuggestions = useCallback(async (text: string) => {
+        if (text.length < 2) return;
+        
+        try {
+            // Using local proxy to avoid CORS issues
+            const response = await fetch(`/api/suggestions?q=${encodeURIComponent(text)}`);
+            const data = await response.json();
+            // Data format: [{"phrase": "suggestion1"}, {"phrase": "suggestion2"}, ...]
+            if (data && Array.isArray(data)) {
+                setSuggestions(data.map((item: any) => item.phrase).slice(0, 5));
+            }
+        } catch (e) {
+            console.error("Failed to fetch suggestions", e);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (query.length > 1) {
+            const handler = setTimeout(() => fetchSuggestions(query), 150);
+            return () => clearTimeout(handler);
+        } else {
+            setSuggestions([]);
+        }
+    }, [query, fetchSuggestions]);
 
     useEffect(() => {
         if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
@@ -71,8 +97,6 @@ function ChatBoxInput({
             recognitionRef.current?.stop();
             setIsListening(false);
         } else {
-            // Clear query when starting new dictation if desired, or just append. 
-            // We'll let it overwrite for simplicity as per standard behavior unless handled otherwise.
             setQuery('');
             recognitionRef.current?.start();
             setIsListening(true);
@@ -133,19 +157,37 @@ function ChatBoxInput({
                     }}
                 />
 
-                <div className='flex justify-between items-center mt-2'>
-                    <Tabs defaultValue="Search">
+                {suggestions.length > 0 && (
+                    <div className="border-t border-border mt-2 pt-2">
+                        {suggestions.map((suggestion, index) => (
+                            <div 
+                                key={index} 
+                                className="flex items-center gap-3 p-3 hover:bg-muted cursor-pointer rounded-lg"
+                                onClick={() => {
+                                    setQuery(suggestion);
+                                    onSearch();
+                                }}
+                            >
+                                <Search className="h-4 w-4 text-gray-500" />
+                                <span className="text-sm text-foreground">{suggestion}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                <div className='flex justify-between items-center mt-2 flex-nowrap'>
+                    <Tabs defaultValue="Search" className="flex-shrink-0">
                         <TabsList>
-                            <TabsTrigger value="Search" className='text-[#1c7483] data-[state=active]:text-[#1c7483]'>
-                                <SearchCheck className='h-4 w-4 mr-1' /> Search
+                            <TabsTrigger value="Search" className='!text-primary data-[state=active]:!text-primary text-xs px-1 py-0.5'>
+                                <SearchCheck className='h-3 w-3 mr-1' /> Search
                             </TabsTrigger>
-                            <TabsTrigger value="Research" className='text-[#1c7483] data-[state=active]:text-[#1c7483]'>
-                                <Atom className='h-4 w-4 mr-1' /> Research
+                            <TabsTrigger value="Research" className='!text-primary data-[state=active]:!text-primary text-xs px-1 py-0.5'>
+                                <Atom className='h-3 w-3 mr-1' /> Research
                             </TabsTrigger>
                         </TabsList>
                     </Tabs>
 
-                    <div className='flex gap-2 items-center'>
+                    <div className='flex gap-1 items-center flex-nowrap flex-shrink-0'>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button variant='ghost' size='icon' className="bg-[#f9faf5] hover:bg-[#f9faf5]/80">
