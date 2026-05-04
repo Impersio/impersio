@@ -57,19 +57,6 @@ export default function App() {
 
   const location = useLocation();
   const navigate = useNavigate();
-
-  // Prompt sign in on mount if not authenticated
-  useEffect(() => {
-    const checkAuth = async () => {
-      const currentUser = authService.getCurrentUser();
-      if (!currentUser && !clerkUser && !location.pathname.startsWith('/search/')) {
-        setTimeout(() => {
-          openSignIn();
-        }, 1500);
-      }
-    };
-    checkAuth();
-  }, [clerkUser, openSignIn, location.pathname]);
   
   const view = location.pathname === '/discover' ? 'discover' : 
                location.pathname === '/library' ? 'library' : 
