@@ -2,7 +2,7 @@ import { LucideImage, LucideList, LucideSparkles, LucideVideo, ChevronRight, Sha
 import { useState } from 'react';
 import Markdown from 'react-markdown';
 
-export function DisplayResult({ searchInputRecord, userImage, images, videos, sources, answer, isFinished, followUps = [], onShare }: any) {
+export function DisplayResult({ searchInputRecord, userImage, images, videos, sources, answer, isFinished, followUps = [], onShare, onSearch, hideFollowUps = false }: any) {
     const [activeTab, setActiveTab] = useState('Answer');
 
     const tabs = [
@@ -162,12 +162,12 @@ export function DisplayResult({ searchInputRecord, userImage, images, videos, so
                                     </div>
                                 </div>
                                 
-                                {followUps && followUps.length > 0 && (
+                                {!hideFollowUps && followUps && followUps.length > 0 && (
                                     <div className="space-y-3 pt-4 border-t border-gray-100">
-                                        {followUps.map((q: string, idx: number) => (
-                                            <div key={idx} className="flex items-center gap-3 text-gray-700 hover:text-black cursor-pointer group">
+                                        {followUps.map((q: any, idx: number) => (
+                                            <div key={idx} onClick={() => onSearch(q.question)} className="flex items-center gap-3 text-gray-700 hover:text-black cursor-pointer group">
                                                 <CornerDownRight className="w-4 h-4 text-gray-400 group-hover:text-black" />
-                                                <span className="text-sm">{q}</span>
+                                                <span className="text-sm">{q.question}</span>
                                             </div>
                                         ))}
                                     </div>

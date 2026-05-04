@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Plus } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useUser, useClerk, UserButton } from '@clerk/clerk-react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { authService } from '@/services/authService';
 import { User, ModelOption } from '@/types';
 import { saveToLibrary } from '@/services/libraryService';
@@ -13,7 +13,6 @@ import { getConversationMessages, getSharedConversation } from '@/services/chatS
 import { SubscriptionModal } from '@/components/SubscriptionModal';
 import { useChat } from '@/hooks/useChat';
 import { useUserSync } from '@/hooks/useUserSync';
-import { Header } from '@/components/Header.tsx';
 import { DisplayResult } from '@/components/DisplayResult.tsx';
 import AppSidebar from '@/components/app-sidebar';
 import ChatBoxInput from '@/components/ChatBoxInput';
@@ -21,10 +20,17 @@ import ChatBoxLogo from '@/components/ChatBoxLogo';
 import { db } from '@/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
+// Page imports
+import ApiPage from '@/components/pages/ApiPage';
+import AboutPage from '@/components/pages/AboutPage';
+import BlogPage from '@/components/pages/BlogPage';
+import TermsPage from '@/components/pages/TermsPage';
+import PrivacyPage from '@/components/pages/PrivacyPage';
+import ProfileSettingsPage from '@/components/pages/ProfileSettingsPage';
+
 // --- Available Models ---
 const MODELS: ModelOption[] = [
-    { id: 'moonshotai/kimi-k2-instruct-0905', name: 'Kimi K2', description: "Moonshot AI's Kimi K2", category: 'Stable', provider: 'groq', logoUrl: 'https://upload.wikimedia.org/wikipedia/en/8/87/Kimi-logo-2025.png' },
-    { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', description: "OpenAI GPT-OSS 120B", category: 'Experimental', provider: 'groq', logoUrl: 'https://images.icon-icons.com/3913/PNG/512/openai_logo_icon_248315.png' },
+    { id: 'openai/gpt-oss-120b', name: 'GPT-OSS 120B', description: "OpenAI GPT-OSS 120B", category: 'Stable', provider: 'groq', logoUrl: 'https://images.icon-icons.com/3913/PNG/512/openai_logo_icon_248315.png' },
     { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nvidia Nemotron 3 Super', description: "Nvidia Nemotron 3 Super 120B", category: 'Experimental', provider: 'openrouter', logoUrl: 'https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/nvidia-color.png' },
 ];
 
@@ -67,7 +73,13 @@ export default function App() {
   
   const view = location.pathname === '/discover' ? 'discover' : 
                location.pathname === '/library' ? 'library' : 
-               location.pathname === '/profile' ? 'profile' : 'home';
+               location.pathname === '/profile' ? 'profile' : 
+               location.pathname === '/api' ? 'api' :
+               location.pathname === '/about' ? 'about' :
+               location.pathname === '/blog' ? 'blog' :
+               location.pathname === '/terms' ? 'terms' :
+               location.pathname === '/privacy' || location.pathname === '/privacy-policy' ? 'privacy' :
+               'home';
 
   const [user, setUser] = useState<User | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelOption>(MODELS[0]);
@@ -159,7 +171,6 @@ export default function App() {
   const handleShare = async () => {
       if (!activeConversationId) return;
       if (!clerkUser && !authService.getCurrentUser()) {
-          alert('Please sign in to share conversations.');
           openSignIn();
           return;
       }
@@ -171,10 +182,8 @@ export default function App() {
           });
           const shareUrl = `https://impersio.me/search/${activeConversationId}`;
           await navigator.clipboard.writeText(shareUrl);
-          alert('Link copied to clipboard!');
       } catch (error) {
           console.error('Error sharing conversation:', error);
-          alert('Failed to share conversation.');
       }
   };
 
@@ -199,24 +208,12 @@ export default function App() {
       return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const firstUserMsg = messages.find(m => m.role === 'user');
-  const searchInputRecord = {
-      searchInput: firstUserMsg?.content || chatTitle,
-      created_at: new Date() 
-  };
-
   return (
       <div className="flex h-screen w-full bg-background text-foreground font-sans selection:bg-[#1c7483]/20 overflow-hidden">
         <SubscriptionModal isOpen={isProModalOpen} onClose={() => setIsProModalOpen(false)} />
         <AppSidebar />
 
         <main className="flex-1 flex flex-col min-w-0 relative h-full bg-background transition-all duration-300">
-             {hasSearched && view === 'home' && (
-                 <div className="sticky top-0 left-0 right-0 z-30 bg-background/95 backdrop-blur-md">
-                     <Header searchInputRecord={searchInputRecord} />
-                 </div>
-             )}
-
            {view === 'home' && (
               <div className="flex-1 flex flex-col h-full relative overflow-hidden">
                 {!hasSearched ? (
@@ -246,21 +243,19 @@ export default function App() {
                                 setImage={setImage}
                                 selectedModel={selectedModel}
                                 setSelectedModel={setSelectedModel}
-                                searchModes={searchModes}
-                                setSearchModes={setSearchModes}
                                 models={MODELS}
                             />
 
                        </div>
 
                       <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center gap-6 text-sm text-muted font-medium">
-                          <a href="#" className="hover:text-foreground transition-colors">Pro</a>
-                          <a href="#" className="hover:text-foreground transition-colors">Enterprise</a>
-                          <a href="#" className="hover:text-foreground transition-colors">API</a>
-                          <a href="#" className="hover:text-foreground transition-colors">Blog</a>
-                          <a href="#" className="hover:text-foreground transition-colors">Careers</a>
-                          <a href="#" className="hover:text-foreground transition-colors">Store</a>
-                          <a href="#" className="hover:text-foreground transition-colors">Finance</a>
+                          <button onClick={() => setIsProModalOpen(true)} className="hover:text-foreground transition-colors">Pro</button>
+                          <a href="https://github.com/impersio/impersio" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">GitHub</a>
+                          <Link to="/api" className="hover:text-foreground transition-colors">API</Link>
+                          <Link to="/blog" className="hover:text-foreground transition-colors">Blog</Link>
+                          <Link to="/about" className="hover:text-foreground transition-colors">About Us</Link>
+                          <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+                          <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
                           <button className="flex items-center gap-1 hover:text-foreground transition-colors">
                               English <ChevronDown className="w-3 h-3" />
                           </button>
@@ -271,7 +266,7 @@ export default function App() {
                   </div>
                 ) : (
                   <>
-                    <div className="flex-1 overflow-y-auto pb-40 pt-4 px-0 scroll-smooth scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-muted">
+                  <div className="flex-1 overflow-y-auto pb-24 pt-4 px-0 scroll-smooth scrollbar-thin scrollbar-thumb-border hover:scrollbar-thumb-muted">
                         <div className="flex flex-col w-full mt-6"> 
                         {messages.map((msg, idx) => ( 
                             msg.role === 'assistant' && (
@@ -286,27 +281,26 @@ export default function App() {
                                     followUps={msg.followUps}
                                     isFinished={!isLoading}
                                     onShare={handleShare}
+                                    onSearch={onSearch}
+                                    hideFollowUps={true}
                                 />
                             )
                         ))}
                         <div ref={messagesEndRef} className="h-4" />
                         </div>
                     </div>
-                    
-                    <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-background via-background/95 to-transparent pb-4 md:pb-6 pt-10 px-4">
-                        <div className="max-w-3xl mx-auto w-full">
-                           <ChatBoxInput 
-                               query={query} 
-                               setQuery={setQuery} 
-                               onSearch={() => onSearch()} 
-                               image={image}
-                               setImage={setImage}
-                               selectedModel={selectedModel}
-                               setSelectedModel={setSelectedModel}
-                               searchModes={searchModes}
-                               setSearchModes={setSearchModes}
-                               models={MODELS}
-                           />
+                    <div className="fixed bottom-4 left-0 right-0 z-30 flex justify-center items-center">
+                        <div className="w-full max-w-3xl px-4">
+                            <ChatBoxInput 
+                                query={query} 
+                                setQuery={setQuery} 
+                                onSearch={() => onSearch()} 
+                                image={image}
+                                setImage={setImage}
+                                selectedModel={selectedModel}
+                                setSelectedModel={setSelectedModel}
+                                models={MODELS}
+                            />
                         </div>
                     </div>
                   </>
@@ -316,34 +310,13 @@ export default function App() {
            
            {view === 'discover' && <Discover onBack={() => navigate('/')} />}
            {view === 'library' && <Library onSelectThread={(id) => { setActiveConversationId(id); getConversationMessages(id).then(msgs => { setMessages(msgs); setHasSearched(true); window.history.pushState({}, '', '/'); }); }} />}
+           {view === 'api' && <ApiPage onBack={() => navigate('/')} />}
+           {view === 'about' && <AboutPage onBack={() => navigate('/')} />}
+           {view === 'blog' && <BlogPage onBack={() => navigate('/')} />}
+           {view === 'terms' && <TermsPage onBack={() => navigate('/')} />}
+           {view === 'privacy' && <PrivacyPage onBack={() => navigate('/')} />}
            
-           {view === 'profile' && (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-12">
-                 <div className="w-20 h-20 rounded-full bg-surface flex items-center justify-center mb-8 border border-border shadow-sm">
-                    <h1 className="text-xl font-bold text-[#1c7483]">P</h1>
-                 </div>
-                 <h2 className="text-2xl font-medium tracking-tight mb-2 font-sans">Your Profile</h2>
-                 <p className="text-muted max-w-sm text-sm font-sans mb-8">Manage your account settings and subscription.</p>
-                 {user ? (
-                     <div className="bg-surface border border-border rounded-xl p-6 w-full max-w-sm text-left">
-                         <div className="mb-4">
-                             <label className="text-xs font-bold uppercase text-muted tracking-wider">Email</label>
-                             <div className="text-foreground font-medium">{user.email}</div>
-                         </div>
-                         <div className="mb-6">
-                             <label className="text-xs font-bold uppercase text-muted tracking-wider">Plan</label>
-                             <div className="flex items-center gap-2">
-                                 <span className="text-foreground font-medium">{user.is_pro ? 'Pro' : 'Free'}</span>
-                                 {!user.is_pro && <button onClick={() => setIsProModalOpen(true)} className="text-xs text-foreground hover:underline">Upgrade</button>}
-                             </div>
-                         </div>
-                         <button onClick={() => { authService.signOut(); window.location.reload(); }} className="w-full py-2 bg-surface-hover hover:bg-border rounded-lg text-sm font-medium transition-colors">Sign Out</button>
-                     </div>
-                 ) : (
-                     <button onClick={() => openSignIn()} className="px-6 py-2 bg-foreground text-background rounded-full font-medium">Sign In</button>
-                 )}
-              </div>
-           )}
+           {view === 'profile' && <ProfileSettingsPage onBack={() => navigate('/')} user={user} openSignIn={openSignIn} setIsProModalOpen={setIsProModalOpen} clerkUser={clerkUser} />}
        </main>
       </div>
   );

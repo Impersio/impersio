@@ -1,12 +1,10 @@
+import { SciraLogo } from '@/components/logos/scira-logo';
+
 export default function ChatBoxLogo({ className }: { className?: string }) {
   return (
     <div className={`flex items-center justify-center gap-2 ${className}`}>
-      <img 
-        src="https://upload.wikimedia.org/wikipedia/commons/1/1d/Perplexity_AI_logo.svg"
-        alt="Perplexity Logo"
-        className="h-8 w-auto"
-        referrerPolicy="no-referrer"
-      />
+                 <SciraLogo className="w-8 h-8 text-[#1c7483]" />
+                 <span className="font-sans font-bold tracking-tight text-xl mb-0.5">Impersio ai</span>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 {
-  "name": "Perplexity Clone",
-  "description": "A clean, refactored Perplexity-style search interface focused on core functionality.",
+  "name": "Impersio AI",
+  "description": "Impersio is an AI-powered answer engine that delivers fast, accurate, and cited answers to your questions. Search smarter with real-time web access and transparent sources.",
   "requestFramePermissions": [
     "microphone"
   ]

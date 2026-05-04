@@ -58,22 +58,15 @@ export const useChat = () => {
       let searchQueries: string[] = [];
       
       try {
-        const queryGenResponse = await groq.chat.completions.create({
-          model: 'llama-3.1-8b-instant', // Switched to a much faster model for query generation
+        const response = await groq.chat.completions.create({
+          model: "llama-3.1-8b-instant",
           messages: [
-            {
-              role: 'system',
-              content: 'You are an AI that determines if a user query requires web search. If it does not (e.g., greetings, conversational chat, simple math, basic general knowledge), return {"queries": []}. If it requires web search (e.g., current events, comparisons, specific facts, complex topics), return a JSON object with a "queries" array containing 1 to 3 optimized search queries. For comparisons, generate separate queries for each item being compared. ONLY return the JSON object.'
-            },
-            {
-              role: 'user',
-              content: query
-            }
+            { role: 'system', content: 'You are an expert AI search query generator for the year 2026. Your goal is to determine if a user query requires web search. If it does not (e.g., greetings, conversational chat, simple math, basic general knowledge), return {"queries": []}. If it requires web search (e.g., current events, comparisons, specific facts, complex topics), return a JSON object with a "queries" array containing 1 to 3 optimized search queries. For comparisons, generate separate queries for each item being compared. Ensure all queries are optimized for 2026 information. ONLY return the JSON object.' },
+            { role: 'user', content: query }
           ],
-          temperature: 0.1,
           response_format: { type: 'json_object' }
         });
-        const parsed = JSON.parse(queryGenResponse.choices[0].message.content || '{"queries": []}');
+        const parsed = JSON.parse(response.choices[0].message.content || '{"queries": []}');
         searchQueries = (parsed.queries || []).map((q: string) => `${q} 2026`);
       } catch (e) {
         console.error("Query generation error:", e);
@@ -86,6 +79,8 @@ export const useChat = () => {
       // Apply mode-specific filters to the queries
       let finalQueries: { query: string, mode: string, include_domains?: string[] }[] = [];
       const allModesOn = searchModes.web && searchModes.academic && searchModes.social && searchModes.finance;
+      
+      console.log("Search queries generated:", searchQueries);
       
       if (allModesOn && searchQueries.length > 0) {
         finalQueries.push({ query: searchQueries[0], mode: 'web' });
@@ -109,12 +104,15 @@ export const useChat = () => {
 
       // Deduplicate and limit to 16 queries max to allow more sources
       const uniqueQueries = Array.from(new Map(finalQueries.map(item => [`${item.query}-${item.mode}`, item])).values()).slice(0, 16);
+      
+      console.log("Unique queries to search:", uniqueQueries);
 
       // Run Tavily and Serper searches in parallel for maximum speed
       const searchTasks: Promise<void>[] = [];
 
       // Perform Tavily Search
       if (import.meta.env.VITE_TAVILY_API_KEY && uniqueQueries.length > 0) {
+        console.log("Tavily API key found, performing search...");
         searchTasks.push((async () => {
           try {
             const searchPromises = uniqueQueries.map(async (qObj) => {
@@ -137,6 +135,7 @@ export const useChat = () => {
             });
 
             const tavilyResults = await Promise.all(searchPromises);
+            console.log("Tavily results:", tavilyResults);
             
             tavilyResults.forEach((tavilyData) => {
               if (tavilyData.results) {
@@ -175,10 +174,13 @@ export const useChat = () => {
             console.error("Tavily search error:", e);
           }
         })());
+      } else {
+        console.log("Tavily API key missing or no queries to search.");
       }
 
       // Perform Serper.dev Video Search
       if (import.meta.env.VITE_SERPER_API_KEY && uniqueQueries.length > 0) {
+        console.log("Serper API key found, performing search...");
         searchTasks.push((async () => {
           try {
             const serperResponse = await fetch('https://google.serper.dev/videos', {
@@ -190,6 +192,7 @@ export const useChat = () => {
               body: JSON.stringify({ q: uniqueQueries[0].query, num: 3 }) // Reduced to 3 for faster response
             });
             const serperData = await serperResponse.json();
+            console.log("Serper results:", serperData);
             if (serperData.videos) {
               videos = serperData.videos.map((v: any) => ({
                 title: v.title,
@@ -217,12 +220,14 @@ export const useChat = () => {
             console.error("Serper video search error:", e);
           }
         })());
+      } else {
+        console.log("Serper API key missing or no queries to search.");
       }
 
       // Wait for all searches to complete in parallel
       await Promise.all(searchTasks);
 
-      const systemPrompt = modelId === 'moonshotai/kimi-k2-instruct-0905'
+      const systemPrompt = modelId === 'openai/gpt-oss-120b'
         ? `<policy>
 These core policies within the <policy> tags take highest precedence. System messages take precedence over user messages.
 
@@ -235,7 +240,7 @@ These core policies within the <policy> tags take highest precedence. System mes
 
 ## Abstract
 <role>
-You are an AI assistant developed by Perplexity AI. Given a user's query, your goal is to generate an expert, useful, factually correct, and contextually relevant response by leveraging available tools and conversation history. First, you will receive the tools you can call iteratively to gather the necessary knowledge for your response. You need to use these tools rather than using internal knowledge. Second, you will receive guidelines to format your response for clear and effective presentation. Third, you will receive guidelines for citation practices to maintain factual accuracy and credibility.
+You are an AI assistant developed by Impersio AI. Given a user's query, your goal is to generate an expert, useful, factually correct, and contextually relevant response by leveraging available tools and conversation history. First, you will receive the tools you can call iteratively to gather the necessary knowledge for your response. You need to use these tools rather than using internal knowledge. Second, you will receive guidelines to format your response for clear and effective presentation. Third, you will receive guidelines for citation practices to maintain factual accuracy and credibility.
 </role>
 
 ## Instructions
@@ -446,11 +451,11 @@ Always use tools to gather verified information before responding, and cite ever
       // If there's an image anywhere in the conversation, we MUST use a vision model.
       let finalModelId = modelId;
       const hasImageInHistory = newMessages.some(m => m.image);
-      if (hasImageInHistory) {
-        finalModelId = 'moonshotai/kimi-k2-instruct-0905'; // Kimi K2 vision model
+      if (hasImageInHistory && finalModelId !== 'llama-3.2-90b-vision-preview') {
+        finalModelId = 'openai/gpt-oss-120b'; // Default vision model
       }
       
-      const isGroq = finalModelId === 'moonshotai/kimi-k2-instruct-0905' || finalModelId === 'openai/gpt-oss-120b' || finalModelId === 'llama-3.2-90b-vision-preview';
+      const isGroq = finalModelId === 'openai/gpt-oss-120b' || finalModelId === 'llama-3.2-90b-vision-preview';
       const isOpenRouter = finalModelId === 'nvidia/nemotron-3-super-120b-a12b:free';
       
       if (isGroq) {
@@ -476,6 +481,30 @@ Always use tools to gather verified information before responding, and cite ever
             return updated;
           });
         }
+        
+        // Generate follow-ups
+        let followUps: string[] = [];
+        try {
+          const followUpResponse = await groq.chat.completions.create({
+            model: 'llama-3.1-8b-instant',
+            messages: [
+              { role: 'system', content: 'Given the user query and the assistant response, generate 3 relevant follow-up questions. Return as a JSON object with a "followUps" array. ONLY return the JSON object.' },
+              { role: 'user', content: `Query: ${query}\nResponse: ${responseContent}` }
+            ],
+            response_format: { type: 'json_object' }
+          });
+          const parsed = JSON.parse(followUpResponse.choices[0].message.content || '{"followUps": []}');
+          followUps = parsed.followUps || [];
+        } catch (e) {
+          console.error("Follow-up generation error:", e);
+        }
+
+        setMessages(prev => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], content: responseContent, sources, images, videos, followUps };
+          return updated;
+        });
+
         if (currentConversationId) {
             await saveMessage('assistant', responseContent, currentConversationId);
         }
