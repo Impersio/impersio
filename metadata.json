@@ -1,7 +1,10 @@
 {
-  "name": "Impersio AI",
-  "description": "Impersio is an AI-powered answer engine that delivers fast, accurate, and cited answers to your questions. Search smarter with real-time web access and transparent sources.",
+  "name": "Thinkwispr AI dictation app",
+  "description": "Thinkwispr is an ai dictation platform that is free safe and created by anubhav sapkota .",
   "requestFramePermissions": [
     "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }
